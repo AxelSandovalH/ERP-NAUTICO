@@ -1,0 +1,16 @@
+# Postgres local para desarrollo. Crea el rol `erp_app` (sin superusuario) para
+# que Row Level Security se aplique de verdad: un superusuario la ignora.
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: erp_nautico
+    ports:
+      - "54329:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+volumes:
+  pgdata:

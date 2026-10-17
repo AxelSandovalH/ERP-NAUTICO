@@ -1,0 +1,225 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── IDENTIDAD (sin RLS: se consulta antes de saber el tenant) ───────────────
+
+enum Plan {
+  PRUEBA
+  BASICO
+  PRO
+}
+
+enum RolUsuario {
+  ADMIN
+  GERENTE
+  VENDEDOR
+  OPERACIONES
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  nombre    String
+  plan      Plan     @default(PRUEBA)
+  // Módulos activos (ids del registro en src/modules/registry.ts). El plan
+  // define el conjunto por defecto; se puede ajustar por tenant.
+  modulos   String[] @default([])
+  moneda    String   @default("MXN")
+  // Zona IANA del negocio: define qué día es "hoy" para el calendario y el panel.
+  zonaHoraria String @default("America/Mazatlan")
+  activo    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+
+  usuarios     Usuario[]
+  embarcaciones Embarcacion[]
+  tarifas      Tarifa[]
+  bloqueos     BloqueoEmbarcacion[]
+  clientes     Cliente[]
+  reservas     Reserva[]
+  pagos        Pago[]
+}
+
+model Usuario {
+  id           String     @id @default(cuid())
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email        String     @unique
+  nombre       String
+  // Id del usuario en Supabase Auth (auth.users.id). Las credenciales viven allá.
+  supabaseId   String     @unique
+  rol          RolUsuario @default(VENDEDOR)
+  activo       Boolean    @default(true)
+  creadoEn     DateTime   @default(now())
+
+  reservasCreadas Reserva[] @relation("ReservaCreador")
+
+  @@index([tenantId])
+}
+
+// ─── MÓDULO FLOTA ────────────────────────────────────────────────────────────
+
+enum TipoEmbarcacion {
+  YATE
+  CATAMARAN
+  VELERO
+  LANCHA
+  MOTO_ACUATICA
+  PANGA
+}
+
+enum EstadoEmbarcacion {
+  ACTIVA
+  MANTENIMIENTO
+  INACTIVA
+}
+
+model Embarcacion {
+  id         String            @id @default(cuid())
+  tenantId   String
+  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre     String
+  tipo       TipoEmbarcacion
+  capacidad  Int
+  esloraPies Int?
+  color      String            @default("#0ea5e9") // color en el calendario
+  estado     EstadoEmbarcacion @default(ACTIVA)
+  notas      String?
+  creadoEn   DateTime          @default(now())
+
+  tarifas  Tarifa[]
+  bloqueos BloqueoEmbarcacion[]
+  reservas Reserva[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+model Tarifa {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  embarcacionId String
+  embarcacion   Embarcacion @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
+  nombre        String // "Tour 4 horas", "Atardecer"
+  duracionMin   Int
+  precioCentavos Int
+  activa        Boolean     @default(true)
+
+  reservas Reserva[]
+
+  @@index([tenantId])
+  @@index([embarcacionId])
+}
+
+model BloqueoEmbarcacion {
+  id            String      @id @default(cuid())
+  tenantId      String
+  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  embarcacionId String
+  embarcacion   Embarcacion @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
+  desde         DateTime    @db.Date
+  hasta         DateTime    @db.Date // inclusive
+  motivo        String
+
+  @@index([tenantId])
+  @@index([embarcacionId, desde, hasta])
+}
+
+// ─── MÓDULO RESERVAS ─────────────────────────────────────────────────────────
+
+enum EstadoReserva {
+  PENDIENTE
+  CONFIRMADA
+  COMPLETADA
+  CANCELADA
+}
+
+enum OrigenReserva {
+  DIRECTO
+  WEB
+  AGENCIA
+  CONCIERGE
+}
+
+enum MetodoPago {
+  EFECTIVO
+  TARJETA
+  TRANSFERENCIA
+  OTRO
+}
+
+model Cliente {
+  id       String   @id @default(cuid())
+  tenantId String
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre   String
+  email    String?
+  telefono String?
+  notas    String?
+  creadoEn DateTime @default(now())
+
+  reservas Reserva[]
+
+  @@index([tenantId])
+  @@index([tenantId, nombre])
+}
+
+// Fecha + horas locales del negocio (minutos desde medianoche) en lugar de
+// timestamps: un charter es "el 5 de marzo de 10:00 a 14:00" donde está la
+// flota, sin conversión de zona horaria.
+model Reserva {
+  id             String        @id @default(cuid())
+  tenantId       String
+  tenant         Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  folio          Int
+  embarcacionId  String
+  embarcacion    Embarcacion   @relation(fields: [embarcacionId], references: [id])
+  clienteId      String
+  cliente        Cliente       @relation(fields: [clienteId], references: [id])
+  tarifaId       String?
+  tarifa         Tarifa?       @relation(fields: [tarifaId], references: [id], onDelete: SetNull)
+  fecha          DateTime      @db.Date
+  inicioMin      Int
+  finMin         Int
+  pax            Int
+  estado         EstadoReserva @default(PENDIENTE)
+  origen         OrigenReserva @default(DIRECTO)
+  totalCentavos  Int
+  notas          String?
+  creadorId      String?
+  creador        Usuario?      @relation("ReservaCreador", fields: [creadorId], references: [id], onDelete: SetNull)
+  creadoEn       DateTime      @default(now())
+  actualizadoEn  DateTime      @updatedAt
+
+  pagos Pago[]
+
+  @@unique([tenantId, folio])
+  @@index([tenantId, fecha])
+  @@index([embarcacionId, fecha])
+}
+
+model Pago {
+  id            String     @id @default(cuid())
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaId     String
+  reserva       Reserva    @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  montoCentavos Int
+  metodo        MetodoPago
+  referencia    String?
+  pagadoEn      DateTime   @default(now())
+
+  @@index([tenantId])
+  @@index([reservaId])
+}
+
+// Contador de folios por tenant (se incrementa de forma atómica).
+model FolioContador {
+  tenantId String @id
+  ultimo   Int    @default(0)
+}
