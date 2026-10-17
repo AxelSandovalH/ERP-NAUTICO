@@ -37,6 +37,12 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
           {tenant.plan === "PRUEBA" ? "Estás en el periodo de prueba con todos los módulos disponibles." : `Tu plan actual es ${PLANES[tenant.plan].nombre}.`}
           {!cobro && " Para cambiar de plan, contacta a FleetNautic."}
         </p>
+        <div className="mb-4 rounded-lg border border-line bg-surface px-4 py-3 text-sm">
+          <p className="font-medium">Tu suscripción: {tenant.plan === "PRUEBA" ? "Periodo de prueba" : `Plan ${PLANES[tenant.plan].nombre}`}</p>
+          <p className="text-muted">
+            {tenant.estadoSuscripcion === "ACTIVA" ? "Activa, cobrada con tarjeta." : tenant.estadoSuscripcion === "PAGO_PENDIENTE" ? "Con pago pendiente." : tenant.estadoSuscripcion === "CANCELADA" ? "Cancelada." : tenant.plan === "PRUEBA" ? "Sin cobro." : "Asignada por FleetNautic, sin cobro."}
+          </p>
+        </div>
         {pago === "ok" && <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">¡Gracias! Estamos confirmando tu pago; tu plan se activa en unos segundos (recarga la página si aún no lo ves).</p>}
         {pago === "cancelado" && <p className="mb-4 rounded-lg bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800">No se realizó ningún cobro.</p>}
         {tenant.estadoSuscripcion === "PAGO_PENDIENTE" && <p role="alert" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">No pudimos cobrar tu último pago. Actualiza tu método de pago para no perder el acceso.</p>}
