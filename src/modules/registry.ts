@@ -7,7 +7,7 @@ import { puede, type Permiso } from "./permisos";
  * finanzas…) se registra aquí, se crea su carpeta en src/app/(app)/<ruta> y
  * se protege con `requireModulo("<id>")`.
  */
-export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones" | "nomina" | "asistencia";
+export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones" | "nomina" | "asistencia" | "cuentas" | "gastos" | "ingresos";
 
 export type ModuloDef = {
   id: ModuloId;
@@ -15,6 +15,8 @@ export type ModuloDef = {
   descripcion: string;
   /** Módulos que deben estar activos para que este funcione. */
   requiere: ModuloId[];
+  /** Se activa solo cuando lo necesita otro módulo; no se ofrece ni se apaga a mano. */
+  implicito?: boolean;
   nav: { href: string; etiqueta: string; permiso?: Permiso }[];
 };
 
@@ -74,6 +76,28 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
     requiere: ["nomina"],
     nav: [{ href: "/asistencia", etiqueta: "Asistencia", permiso: "asistencia:checar" }],
   },
+  cuentas: {
+    id: "cuentas",
+    nombre: "Cuentas y caja",
+    descripcion: "Efectivo, bancos, tarjetas y pasarelas: saldos, traspasos y arqueo. Se activa con Gastos o Ingresos.",
+    requiere: [],
+    implicito: true,
+    nav: [{ href: "/cuentas", etiqueta: "Cuentas", permiso: "cuentas:administrar" }],
+  },
+  gastos: {
+    id: "gastos",
+    nombre: "Gastos",
+    descripcion: "Registro de gastos por categoría, cuenta y embarcación, en pesos o dólares, con comprobantes.",
+    requiere: ["cuentas"],
+    nav: [{ href: "/gastos", etiqueta: "Gastos", permiso: "gastos:registrar" }],
+  },
+  ingresos: {
+    id: "ingresos",
+    nombre: "Ingresos",
+    descripcion: "Ingresos de reservas y otros, por cuenta y moneda; se generan solos al cobrar una reserva.",
+    requiere: ["cuentas", "reservas"],
+    nav: [{ href: "/ingresos", etiqueta: "Ingresos", permiso: "ingresos:ver" }],
+  },
   calendario: {
     id: "calendario",
     nombre: "Calendario",
@@ -83,12 +107,12 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "ingresos", "gastos", "cuentas", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
 
 export const MODULOS_POR_PLAN: Record<Plan, ModuloId[]> = {
-  PRUEBA: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia"],
+  PRUEBA: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia", "gastos", "ingresos"],
   BASICO: ["nucleo", "flota", "reservas"],
-  PRO: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia"],
+  PRO: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia", "gastos", "ingresos"],
 };
 
 const IDS = new Set<string>(Object.keys(MODULOS));
@@ -98,6 +122,8 @@ const IDS = new Set<string>(Object.keys(MODULOS));
 export function modulosActivos(guardados: string[]): ModuloId[] {
   const set = new Set<ModuloId>(["nucleo"]);
   for (const g of guardados) if (IDS.has(g)) set.add(g as ModuloId);
+  // Cuentas y caja acompaña a Gastos e Ingresos: no se compra ni se apaga por separado
+  if (set.has("gastos") || set.has("ingresos")) set.add("cuentas");
   let cambio = true;
   while (cambio) {
     cambio = false;
@@ -108,6 +134,8 @@ export function modulosActivos(guardados: string[]): ModuloId[] {
       }
     }
   }
+  // Si Gastos e Ingresos quedaron fuera, Cuentas no tiene razón de ser
+  if (!set.has("gastos") && !set.has("ingresos")) set.delete("cuentas");
   return [...set];
 }
 

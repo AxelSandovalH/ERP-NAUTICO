@@ -16,12 +16,14 @@ const FECHA_CORTA = new Intl.DateTimeFormat("es-MX", { weekday: "short", day: "n
 export default async function PagoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await requireModulo("nomina", "nomina:administrar");
-  const { p, entradas, manuales } = await withTenant(s.tenantId, async (tx) => {
+  const conGastos = s.modulos.includes("gastos");
+  const { p, entradas, manuales, cuentas } = await withTenant(s.tenantId, async (tx) => {
+    const cuentas = conGastos ? await tx.cuenta.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } }) : [];
     const p = await tx.pagoNomina.findUnique({ where: { id }, include: { empleado: true, conceptos: { orderBy: [{ tipo: "asc" }, { automatico: "desc" }] } } });
-    if (!p) return { p: null, entradas: [], manuales: [] };
+    if (!p) return { p: null, entradas: [], manuales: [], cuentas };
     const rango = { gte: p.periodoInicio, lte: p.periodoFin };
     return {
-      p,
+      p, cuentas,
       entradas: await tx.checada.findMany({ where: { empleadoId: p.empleadoId, tipo: "ENTRADA", dia: rango }, select: { dia: true } }),
       manuales: await tx.diaAsistencia.findMany({ where: { empleadoId: p.empleadoId, fecha: rango } }),
     };
@@ -80,6 +82,11 @@ export default async function PagoPage({ params }: { params: Promise<{ id: strin
                 <Formulario accion={marcarPagadoAccion.bind(null, p.id)} enviar="Marcar como pagado" className="grid gap-3 sm:grid-cols-2">
                   <Campo etiqueta="Método"><Select name="metodo" defaultValue="TRANSFERENCIA">{Object.entries(METODOS_PAGO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Campo>
                   <Campo etiqueta="Referencia"><Input name="referencia" placeholder="Folio de transferencia" /></Campo>
+                  {conGastos && (
+                    <Campo etiqueta="Sale de la cuenta" className="sm:col-span-2">
+                      <Select name="cuentaId" defaultValue="" required><option value="" disabled>Elegir cuenta…</option>{cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}</Select>
+                    </Campo>
+                  )}
                 </Formulario>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <Formulario accion={recalcularPagoAccion.bind(null, p.id)} enviar="Recalcular" variante="suave" className="inline"><span /></Formulario>

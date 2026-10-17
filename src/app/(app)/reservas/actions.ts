@@ -8,6 +8,7 @@ import { esIso, pesosACentavos } from "@/lib/fechas";
 import { horaAMinutos } from "@/lib/reservas/disponibilidad";
 import { ErrorReserva, crearReservaTx, validarDisponibilidad } from "@/lib/reservas/crear";
 import { periodoCerrado, recalcularComisionReserva } from "@/lib/comisiones/servicio";
+import { ErrorFinanzas, cancelarIngresoDePago, ingresoDesdePago } from "@/lib/finanzas/servicio";
 import { aIso } from "@/lib/fechas";
 import type { EstadoForm } from "@/components/formulario";
 
@@ -130,24 +131,40 @@ export async function registrarPago(reservaId: string, _: EstadoForm, fd: FormDa
   if (!p.success) return { error: p.error.issues[0].message };
   const monto = pesosACentavos(p.data.monto);
   if (!monto || monto <= 0) return { error: "Monto inválido." };
-  const msg = await withTenant(s.tenantId, async (tx) => {
-    const r = await tx.reserva.findUnique({ where: { id: reservaId }, include: { pagos: true } });
-    if (!r) return "Reserva no encontrada.";
-    if (r.estado === "CANCELADA") return "No se pueden registrar pagos en una reserva cancelada.";
-    const pagado = r.pagos.reduce((a, x) => a + x.montoCentavos, 0);
-    if (pagado + monto > r.totalCentavos) return "El pago excede el saldo pendiente.";
-    await tx.pago.create({ data: { tenantId: s.tenantId, reservaId, montoCentavos: monto, metodo: p.data.metodo, referencia: p.data.referencia || null } });
-    return null;
-  });
+  const cuentaElegida = String(fd.get("cuentaId") ?? "") || null;
+  let sinCuenta = false;
+  let msg: string | null;
+  try {
+    msg = await withTenant(s.tenantId, async (tx) => {
+      const r = await tx.reserva.findUnique({ where: { id: reservaId }, include: { pagos: true } });
+      if (!r) return "Reserva no encontrada.";
+      if (r.estado === "CANCELADA") return "No se pueden registrar pagos en una reserva cancelada.";
+      const pagado = r.pagos.reduce((a, x) => a + x.montoCentavos, 0);
+      if (pagado + monto > r.totalCentavos) return "El pago excede el saldo pendiente.";
+      const pago = await tx.pago.create({ data: { tenantId: s.tenantId, reservaId, montoCentavos: monto, metodo: p.data.metodo, referencia: p.data.referencia || null } });
+      // Con el módulo de ingresos, el cobro entra solo a la cuenta elegida (o a la de su método de pago)
+      if (s.modulos.includes("ingresos")) sinCuenta = (await ingresoDesdePago(tx, s.tenantId, pago.id, cuentaElegida)) === null;
+      return null;
+    });
+  } catch (e) {
+    if (e instanceof ErrorFinanzas) return { error: e.message };
+    throw e;
+  }
   if (msg) return { error: msg };
   revalidatePath(`/reservas/${reservaId}`);
-  return { ok: "Pago registrado." };
+  revalidatePath("/ingresos", "layout");
+  return { ok: sinCuenta ? "Pago registrado, pero sin ingreso: elige una cuenta o configura cuentas por defecto en Cuentas → Preferencias." : "Pago registrado." };
 }
 
 export async function eliminarPago(reservaId: string, pagoId: string) {
   const s = await requireModulo("reservas", "reservas:cobrar");
-  await withTenant(s.tenantId, (tx) => tx.pago.deleteMany({ where: { id: pagoId, reservaId } }));
+  await withTenant(s.tenantId, async (tx) => {
+    // Su ingreso se cancela (no se borra el rastro) antes de eliminar el pago
+    if (s.modulos.includes("ingresos")) await cancelarIngresoDePago(tx, pagoId, s.usuarioId);
+    await tx.pago.deleteMany({ where: { id: pagoId, reservaId } });
+  });
   revalidatePath(`/reservas/${reservaId}`);
+  revalidatePath("/ingresos", "layout");
 }
 
 const clienteSchema = z.object({

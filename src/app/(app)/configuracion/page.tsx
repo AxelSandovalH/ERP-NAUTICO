@@ -28,7 +28,7 @@ export default async function ConfiguracionPage() {
           <p className="mb-4 text-sm text-muted">Activa o desactiva los módulos incluidos en tu plan. Los que dependen de otros se apagan solos.</p>
           <Formulario accion={guardarModulos}>
             <ul className="space-y-3">
-              {(Object.values(MODULOS)).filter((m) => m.id !== "nucleo").map((m) => {
+              {(Object.values(MODULOS)).filter((m) => m.id !== "nucleo" && !m.implicito).map((m) => {
                 const enPlan = incluidos.includes(m.id as ModuloId);
                 return (
                   <li key={m.id}>

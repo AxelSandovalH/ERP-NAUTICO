@@ -10,7 +10,10 @@ export function aIso(d: Date): string {
 }
 
 export function esIso(s: string | null | undefined): s is string {
-  return !!s && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(aDate(s).getTime());
+  if (!s || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = aDate(s);
+  // Ida y vuelta: JavaScript desborda "2026-02-31" a marzo en lugar de rechazarlo
+  return !Number.isNaN(d.getTime()) && aIso(d) === s;
 }
 
 export function sumarDias(iso: string, n: number): string {

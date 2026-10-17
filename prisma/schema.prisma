@@ -54,6 +54,14 @@ model Tenant {
   diaAsistencias       DiaAsistencia[]
   pagoNominas          PagoNomina[]
   conceptoNominas      ConceptoNomina[]
+  cuentas              Cuenta[]
+  categorias           Categoria[]
+  gastos               Gasto[]
+  ingresos             Ingreso[]
+  traspasos            Traspaso[]
+  ajusteCuentas        AjusteCuenta[]
+  arqueoCuentas        ArqueoCuenta[]
+  comprobantes         Comprobante[]
 }
 
 model Usuario {
@@ -116,6 +124,7 @@ model Embarcacion {
   reservas         Reserva[]
   tarifasComision  TarifaComision[]
   tripulantesFijos TripulanteEmbarcacion[]
+  gastos           Gasto[]
 
   @@unique([tenantId, nombre])
   @@index([tenantId])
@@ -224,6 +233,8 @@ model Reserva {
   pagos       Pago[]
   comision    Comision?
   tripulantes ReservaTripulante[]
+  gastos      Gasto[]
+  ingresos    Ingreso[]
 
   @@unique([tenantId, folio])
   @@index([tenantId, fecha])
@@ -240,6 +251,8 @@ model Pago {
   metodo        MetodoPago
   referencia    String?
   pagadoEn      DateTime   @default(now())
+
+  ingreso Ingreso?
 
   @@index([tenantId])
   @@index([reservaId])
@@ -424,6 +437,7 @@ model AbonoComision {
   registradoPorId String?
 
   aplicaciones AbonoAplicacion[]
+  gasto        Gasto?
 
   @@index([tenantId])
   @@index([beneficiarioId])
@@ -610,6 +624,7 @@ model PagoNomina {
   actualizadoEn       DateTime         @updatedAt
 
   conceptos ConceptoNomina[]
+  gasto     Gasto?
 
   @@unique([empleadoId, periodoInicio, periodoFin])
   @@index([tenantId, periodoInicio])
@@ -630,4 +645,249 @@ model ConceptoNomina {
 
   @@index([pagoId])
   @@index([tenantId])
+}
+
+// ─── MÓDULOS GASTOS, INGRESOS Y CUENTAS ──────────────────────────────────────
+
+enum Moneda {
+  MXN
+  USD
+}
+
+enum TipoCuenta {
+  EFECTIVO
+  BANCO
+  TARJETA_CREDITO
+  PASARELA // Stripe, PayPal, WeTravel…
+  OTRA
+}
+
+enum TipoCategoria {
+  GASTO
+  INGRESO
+}
+
+enum EstadoMovimiento {
+  ACTIVO
+  CANCELADO // se conserva el registro pero ya no cuenta en saldos ni totales
+}
+
+enum OrigenMovimiento {
+  MANUAL
+  PAGO_RESERVA
+  NOMINA
+  COMISION
+}
+
+// Donde está el dinero: caja de efectivo, cuenta de banco, tarjeta, pasarela de pago.
+// El saldo no se guarda: se calcula con sus movimientos.
+model Cuenta {
+  id                   String     @id @default(cuid())
+  tenantId             String
+  tenant               Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre               String
+  tipo                 TipoCuenta @default(BANCO)
+  moneda               Moneda     @default(MXN)
+  saldoInicialCentavos Int        @default(0)
+  activa               Boolean    @default(true)
+  notas                String?
+  creadoEn             DateTime   @default(now())
+
+  gastos           Gasto[]
+  ingresos         Ingreso[]
+  traspasosSalida  Traspaso[]     @relation("TraspasoOrigen")
+  traspasosEntrada Traspaso[]     @relation("TraspasoDestino")
+  ajustes          AjusteCuenta[]
+  arqueos          ArqueoCuenta[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+// Categorías editables por empresa. `clave` marca las que usa el sistema (NOMINA,
+// COMISIONES, RESERVAS) para las conexiones automáticas.
+model Categoria {
+  id       String        @id @default(cuid())
+  tenantId String
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tipo     TipoCategoria
+  nombre   String
+  clave    String?
+  activa   Boolean       @default(true)
+  orden    Int           @default(0)
+
+  gastos   Gasto[]
+  ingresos Ingreso[]
+
+  @@unique([tenantId, tipo, nombre])
+  @@unique([tenantId, clave])
+  @@index([tenantId])
+}
+
+// `montoCentavos` está en la moneda de la cuenta; `montoBaseCentavos` es su equivalente
+// en la moneda base de la empresa (al tipo de cambio del momento) para sumar todo junto.
+model Gasto {
+  id                String           @id @default(cuid())
+  tenantId          String
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  concepto          String
+  categoriaId       String?
+  categoria         Categoria?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  cuentaId          String
+  cuenta            Cuenta           @relation(fields: [cuentaId], references: [id])
+  montoCentavos     Int
+  moneda            Moneda
+  tipoCambio        Float? // MXN por USD, solo si la cuenta no está en la moneda base
+  montoBaseCentavos Int
+  fecha             DateTime         @db.Date
+  embarcacionId     String?
+  embarcacion       Embarcacion?     @relation(fields: [embarcacionId], references: [id], onDelete: SetNull)
+  reservaId         String?
+  reserva           Reserva?         @relation(fields: [reservaId], references: [id], onDelete: SetNull)
+  proveedor         String?
+  notas             String?
+  // Para la facturación: ¿hay que pedir factura de este gasto?
+  requiereFactura   Boolean          @default(false)
+  estado            EstadoMovimiento @default(ACTIVO)
+  origen            OrigenMovimiento @default(MANUAL)
+  // Gastos que genera el sistema: uno por pago de nómina / por abono de comisión
+  pagoNominaId      String?          @unique
+  pagoNomina        PagoNomina?      @relation(fields: [pagoNominaId], references: [id], onDelete: SetNull)
+  abonoComisionId   String?          @unique
+  abonoComision     AbonoComision?   @relation(fields: [abonoComisionId], references: [id], onDelete: SetNull)
+  registradoPorId   String?
+  canceladoPorId    String?
+  canceladoEn       DateTime?
+  motivoCancelacion String?
+  creadoEn          DateTime         @default(now())
+
+  comprobantes Comprobante[]
+
+  @@index([tenantId, fecha])
+  @@index([cuentaId])
+  @@index([embarcacionId])
+}
+
+model Ingreso {
+  id                String           @id @default(cuid())
+  tenantId          String
+  tenant            Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  concepto          String
+  categoriaId       String?
+  categoria         Categoria?       @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  cuentaId          String
+  cuenta            Cuenta           @relation(fields: [cuentaId], references: [id])
+  montoCentavos     Int
+  moneda            Moneda
+  tipoCambio        Float?
+  montoBaseCentavos Int
+  fecha             DateTime         @db.Date
+  reservaId         String?
+  reserva           Reserva?         @relation(fields: [reservaId], references: [id], onDelete: SetNull)
+  // Cada pago de reserva genera su ingreso (uno solo, aunque se reintente)
+  pagoId            String?          @unique
+  pago              Pago?            @relation(fields: [pagoId], references: [id], onDelete: SetNull)
+  estado            EstadoMovimiento @default(ACTIVO)
+  origen            OrigenMovimiento @default(MANUAL)
+  // Confirmación de dirección: alguien valida que el dinero de verdad entró
+  confirmado        Boolean          @default(false)
+  confirmadoPorId   String?
+  confirmadoEn      DateTime?
+  notas             String?
+  registradoPorId   String?
+  canceladoPorId    String?
+  canceladoEn       DateTime?
+  motivoCancelacion String?
+  creadoEn          DateTime         @default(now())
+
+  @@index([tenantId, fecha])
+  @@index([cuentaId])
+}
+
+// Mover dinero entre cuentas propias: no es gasto ni ingreso.
+model Traspaso {
+  id                   String           @id @default(cuid())
+  tenantId             String
+  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  origenId             String
+  origen               Cuenta           @relation("TraspasoOrigen", fields: [origenId], references: [id])
+  destinoId            String
+  destino              Cuenta           @relation("TraspasoDestino", fields: [destinoId], references: [id])
+  montoOrigenCentavos  Int // en la moneda de la cuenta de origen
+  montoDestinoCentavos Int // en la moneda de la cuenta destino (distinto si cambia la moneda)
+  tipoCambio           Float?
+  fecha                DateTime         @db.Date
+  notas                String?
+  estado               EstadoMovimiento @default(ACTIVO)
+  registradoPorId      String?
+  creadoEn             DateTime         @default(now())
+
+  @@index([tenantId, fecha])
+  @@index([origenId])
+  @@index([destinoId])
+}
+
+// Cuadre por arqueo: sobrante (+) o faltante (−)
+model AjusteCuenta {
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentaId      String
+  cuenta        Cuenta        @relation(fields: [cuentaId], references: [id])
+  montoCentavos Int // con signo
+  motivo        String
+  fecha         DateTime      @db.Date
+  arqueoId      String?       @unique
+  arqueo        ArqueoCuenta? @relation(fields: [arqueoId], references: [id], onDelete: Cascade)
+  creadoEn      DateTime      @default(now())
+
+  @@index([tenantId])
+  @@index([cuentaId])
+}
+
+model ArqueoCuenta {
+  id              String        @id @default(cuid())
+  tenantId        String
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentaId        String
+  cuenta          Cuenta        @relation(fields: [cuentaId], references: [id])
+  fecha           DateTime      @default(now())
+  teoricoCentavos Int // lo que el sistema decía que debía haber
+  contadoCentavos Int // lo que se contó físicamente
+  notas           String?
+  realizadoPorId  String?
+  ajuste          AjusteCuenta?
+
+  @@index([tenantId])
+  @@index([cuentaId, fecha])
+}
+
+// Archivo de soporte de un gasto (foto del ticket, PDF). El archivo vive en Supabase
+// Storage, en un bucket privado y bajo la carpeta de la empresa.
+model Comprobante {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  gastoId        String
+  gasto          Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  ruta           String // ruta dentro del bucket: <tenantId>/<gastoId>/<archivo>
+  nombreOriginal String
+  mime           String
+  tamanoBytes    Int
+  subidoPorId    String?
+  creadoEn       DateTime @default(now())
+
+  @@unique([ruta])
+  @@index([tenantId])
+  @@index([gastoId])
+}
+
+// Preferencias financieras de la empresa (una fila por empresa)
+model ConfigFinanzas {
+  tenantId              String  @id
+  // Moneda base = Tenant.moneda. Tipo de cambio: pesos por dólar
+  tipoCambio            Float   @default(17.5)
+  cuentaEfectivoId      String?
+  cuentaTarjetaId       String?
+  cuentaTransferenciaId String?
 }

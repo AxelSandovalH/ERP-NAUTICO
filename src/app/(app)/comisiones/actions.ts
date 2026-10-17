@@ -8,6 +8,7 @@ import { pesosACentavos } from "@/lib/fechas";
 import {
   ErrorComision, ajustarMonto, anularAbono, cerrarPeriodo, reabrirPeriodo, recalcularPeriodo, registrarAbono,
 } from "@/lib/comisiones/servicio";
+import { ErrorFinanzas, cancelarGastoDeAbono, gastoDesdeAbono } from "@/lib/finanzas/servicio";
 import type { EstadoForm } from "@/components/formulario";
 
 const admin = () => requireModulo("comisiones", "comisiones:administrar");
@@ -15,7 +16,7 @@ const admin = () => requireModulo("comisiones", "comisiones:administrar");
 /** Ejecuta una operación del servicio y convierte sus errores de negocio en mensajes de formulario. */
 async function conErrores(fn: () => Promise<EstadoForm>): Promise<EstadoForm> {
   try { return await fn(); } catch (e) {
-    if (e instanceof ErrorComision) return { error: e.message };
+    if (e instanceof ErrorComision || e instanceof ErrorFinanzas) return { error: e.message };
     throw e;
   }
 }
@@ -126,17 +127,28 @@ export async function registrarAbonoAccion(beneficiarioId: string, _: EstadoForm
   if (!p.success) return { error: p.error.issues[0].message };
   const monto = pesosACentavos(p.data.monto);
   if (!monto || monto <= 0) return { error: "Monto inválido." };
+  const cuentaId = String(fd.get("cuentaId") ?? "");
+  const conGastos = s.modulos.includes("gastos");
+  if (conGastos && !cuentaId) return { error: "Elige la cuenta de la que sale el pago." };
   return conErrores(async () => {
-    await withTenant(s.tenantId, (tx) => registrarAbono(tx, s.tenantId, { beneficiarioId, montoCentavos: monto, metodo: p.data.metodo, referencia: p.data.referencia, notas: p.data.notas, registradoPorId: s.usuarioId }));
+    await withTenant(s.tenantId, async (tx) => {
+      const abono = await registrarAbono(tx, s.tenantId, { beneficiarioId, montoCentavos: monto, metodo: p.data.metodo, referencia: p.data.referencia, notas: p.data.notas, registradoPorId: s.usuarioId });
+      if (conGastos) await gastoDesdeAbono(tx, s.tenantId, abono.id, cuentaId, s.usuarioId);
+    });
     revalidatePath("/comisiones", "layout");
-    return { ok: "Abono registrado y aplicado a las comisiones más antiguas." };
+    revalidatePath("/gastos", "layout");
+    return { ok: conGastos ? "Abono registrado, aplicado a las comisiones más antiguas y cargado como gasto." : "Abono registrado y aplicado a las comisiones más antiguas." };
   });
 }
 
 export async function anularAbonoAccion(beneficiarioId: string, abonoId: string) {
   const s = await admin();
-  await withTenant(s.tenantId, (tx) => anularAbono(tx, abonoId));
+  await withTenant(s.tenantId, async (tx) => {
+    if (s.modulos.includes("gastos")) await cancelarGastoDeAbono(tx, abonoId, s.usuarioId);
+    await anularAbono(tx, abonoId);
+  });
   revalidatePath("/comisiones", "layout");
+  revalidatePath("/gastos", "layout");
 }
 
 export async function ajustarMontoAccion(comisionId: string, beneficiarioId: string, _: EstadoForm, fd: FormData): Promise<EstadoForm> {

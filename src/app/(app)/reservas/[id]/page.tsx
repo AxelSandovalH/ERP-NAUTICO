@@ -28,7 +28,8 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
   const s = await requireModulo("reservas");
   const conTripulacion = s.modulos.includes("tripulacion");
   const conComisiones = s.modulos.includes("comisiones");
-  const { r, tripulantes, beneficiarios } = await withTenant(s.tenantId, async (tx) => {
+  const conIngresos = s.modulos.includes("ingresos");
+  const { r, tripulantes, beneficiarios, cuentas } = await withTenant(s.tenantId, async (tx) => {
     const r = await tx.reserva.findUnique({
       where: { id },
       include: {
@@ -41,7 +42,8 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
       ? await tx.tripulante.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, include: { embarcaciones: { select: { embarcacionId: true } } } })
       : [];
     const beneficiarios = conComisiones && r ? await tx.beneficiario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }) : [];
-    return { r, tripulantes, beneficiarios };
+    const cuentas = conIngresos && r ? await tx.cuenta.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } }) : [];
+    return { r, tripulantes, beneficiarios, cuentas };
   });
   if (!r) notFound();
   const pagado = r.pagos.reduce((a, p) => a + p.montoCentavos, 0);
@@ -115,6 +117,11 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
                 <Select name="metodo">{Object.entries(METODOS_PAGO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select>
               </Campo>
               <Campo etiqueta="Referencia"><Input name="referencia" /></Campo>
+              {conIngresos && (
+                <Campo etiqueta="Entra a la cuenta" className="sm:col-span-3">
+                  <Select name="cuentaId" defaultValue=""><option value="">Según el método (cuenta por defecto)</option>{cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}</Select>
+                </Campo>
+              )}
             </Formulario>
           )}
         </Card>

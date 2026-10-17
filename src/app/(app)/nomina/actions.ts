@@ -7,13 +7,14 @@ import { withTenant } from "@/lib/db/tenant";
 import { aIso, esIso, pesosACentavos } from "@/lib/fechas";
 import { ErrorNomina, agregarConcepto, cancelarPago, generarNominaPeriodo, generarPago, marcarPagado, quitarConcepto } from "@/lib/nomina/servicio";
 import { periodoDe, type Periodicidad } from "@/lib/nomina/periodos";
+import { ErrorFinanzas, cancelarGastoDeNomina, gastoDesdeNomina } from "@/lib/finanzas/servicio";
 import type { EstadoForm } from "@/components/formulario";
 
 const admin = () => requireModulo("nomina", "nomina:administrar");
 
 async function conErrores(fn: () => Promise<EstadoForm>): Promise<EstadoForm> {
   try { return await fn(); } catch (e) {
-    if (e instanceof ErrorNomina) return { error: e.message };
+    if (e instanceof ErrorNomina || e instanceof ErrorFinanzas) return { error: e.message };
     throw e;
   }
 }
@@ -123,15 +124,29 @@ export async function marcarPagadoAccion(pagoId: string, _: EstadoForm, fd: Form
   const s = await admin();
   const p = pagoSchema.safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: "Datos inválidos." };
+  const cuentaId = String(fd.get("cuentaId") ?? "");
+  const conGastos = s.modulos.includes("gastos");
+  if (conGastos && !cuentaId) return { error: "Elige la cuenta de la que sale el pago." };
   return conErrores(async () => {
-    await withTenant(s.tenantId, (tx) => marcarPagado(tx, s.tenantId, pagoId, p.data));
+    // Todo en una transacción: si falla el gasto, el pago no queda marcado como pagado
+    await withTenant(s.tenantId, async (tx) => {
+      await marcarPagado(tx, s.tenantId, pagoId, p.data);
+      if (conGastos) await gastoDesdeNomina(tx, s.tenantId, pagoId, cuentaId, s.usuarioId);
+    });
     revalidatePath("/nomina", "layout");
-    return { ok: "Pago registrado." };
+    revalidatePath("/gastos", "layout");
+    return { ok: conGastos ? "Pago registrado y cargado como gasto de nómina." : "Pago registrado." };
   });
 }
 
 export async function cancelarPagoAccion(pagoId: string) {
   const s = await admin();
-  try { await withTenant(s.tenantId, (tx) => cancelarPago(tx, pagoId)); } catch (e) { if (!(e instanceof ErrorNomina)) throw e; }
+  try {
+    await withTenant(s.tenantId, async (tx) => {
+      await cancelarPago(tx, pagoId);
+      if (s.modulos.includes("gastos")) await cancelarGastoDeNomina(tx, pagoId, s.usuarioId);
+    });
+  } catch (e) { if (!(e instanceof ErrorNomina)) throw e; }
   revalidatePath("/nomina", "layout");
+  revalidatePath("/gastos", "layout");
 }

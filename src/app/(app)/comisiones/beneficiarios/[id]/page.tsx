@@ -16,11 +16,13 @@ const pct = (bp: number) => `${(bp / 100).toLocaleString("es-MX", { maximumFract
 export default async function BeneficiarioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const s = await requireModulo("comisiones", "comisiones:administrar");
-  const { b, flota, pendientes, abonos } = await withTenant(s.tenantId, async (tx) => {
+  const conGastos = s.modulos.includes("gastos");
+  const { b, flota, pendientes, abonos, cuentas } = await withTenant(s.tenantId, async (tx) => {
     const b = await tx.beneficiario.findUnique({ where: { id }, include: { tarifas: { include: { embarcacion: { select: { nombre: true } } }, orderBy: { creadoEn: "asc" } } } });
     return {
       b,
       flota: await tx.embarcacion.findMany({ orderBy: { nombre: "asc" }, select: { id: true, nombre: true } }),
+      cuentas: conGastos ? await tx.cuenta.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } }) : [],
       pendientes: b ? await tx.comision.findMany({
         where: { beneficiarioId: id, estado: "PENDIENTE" },
         include: { reserva: { include: { cliente: true, embarcacion: true } } },
@@ -97,6 +99,11 @@ export default async function BeneficiarioPage({ params }: { params: Promise<{ i
               <Campo etiqueta="Método"><Select name="metodo" defaultValue="TRANSFERENCIA">{Object.entries(METODOS_PAGO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Campo>
               <Campo etiqueta="Referencia"><Input name="referencia" /></Campo>
               <Campo etiqueta="Notas"><Input name="notas" /></Campo>
+              {conGastos && (
+                <Campo etiqueta="Sale de la cuenta" className="sm:col-span-2">
+                  <Select name="cuentaId" defaultValue="" required><option value="" disabled>Elegir cuenta…</option>{cuentas.map((c) => <option key={c.id} value={c.id}>{c.nombre} ({c.moneda})</option>)}</Select>
+                </Campo>
+              )}
             </Formulario>
           )}
           <h3 className="mb-2 mt-6 text-sm font-semibold">Abonos</h3>

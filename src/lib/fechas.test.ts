@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { diasDelMes, hoyIso, offsetInicioMes, pesosACentavos, sumarDias, sumarMeses } from "./fechas";
+import { diasDelMes, esIso, hoyIso, offsetInicioMes, pesosACentavos, sumarDias, sumarMeses } from "./fechas";
 
 afterEach(() => vi.useRealTimers());
 
@@ -19,6 +19,10 @@ describe("fechas", () => {
   it("calendario del mes", () => {
     expect(diasDelMes("2028-02")).toBe(29);
     expect(offsetInicioMes("2026-10")).toBe(3); // 1 oct 2026 es jueves
+  });
+  it("esIso rechaza fechas imposibles que JavaScript desbordaría", () => {
+    for (const ok of ["2026-02-28", "2028-02-29", "2026-12-31", "2026-04-30"]) expect(esIso(ok)).toBe(true);
+    for (const mal of ["2026-02-31", "2027-02-29", "2026-04-31", "2026-13-01", "2026-00-10", "2026-01-32", "2026-1-5", "", null, undefined]) expect(esIso(mal)).toBe(false);
   });
   it("convierte pesos a centavos sin errores de punto flotante", () => {
     expect(pesosACentavos("1,234.56")).toBe(123456);

@@ -2,7 +2,7 @@
 import { useActionState, type ReactNode } from "react";
 import { Boton } from "./ui";
 
-export type EstadoForm = { error?: string; ok?: string } | undefined;
+export type EstadoForm = { error?: string; ok?: string; id?: string } | undefined;
 type Accion = (prev: EstadoForm, fd: FormData) => Promise<EstadoForm>;
 
 /** Formulario con server action: muestra el error devuelto y bloquea el botón mientras envía. */
