@@ -38,7 +38,7 @@ async function main() {
     return;
   }
   const tenant = await prisma.tenant.create({
-    data: { nombre: "Cabo Demo Charters", slug: "cabo-demo", plan: "PRO", modulos: MODULOS_POR_PLAN.PRO },
+    data: { nombre: "Cabo Demo Charters", slug: "cabo-demo", plan: "ENTERPRISE", modulos: MODULOS_POR_PLAN.ENTERPRISE },
   });
   const admin = await prisma.usuario.create({
     data: { tenantId: tenant.id, email, nombre: "Ana Demo", rol: "ADMIN", supabaseId: await asegurarUsuarioAuth(email, "Ana Demo") },

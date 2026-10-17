@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/db/client";
 import { createClient } from "@/lib/supabase/server";
 import type { RolUsuario } from "@prisma/client";
-import { modulosActivos, type ModuloId } from "@/modules/registry";
+import { modulosEfectivos, type ModuloId } from "@/modules/registry";
 import { puede, type Permiso } from "@/modules/permisos";
 
 export type Sesion = {
@@ -37,7 +37,8 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
     tenantNombre: u.tenant.nombre,
     moneda: u.tenant.moneda,
     zonaHoraria: u.tenant.zonaHoraria,
-    modulos: modulosActivos(u.tenant.modulos),
+    // El plan es el tope: bajar de plan quita módulos aunque sigan marcados en la empresa
+    modulos: modulosEfectivos(u.tenant.plan, u.tenant.modulos),
   };
 });
 

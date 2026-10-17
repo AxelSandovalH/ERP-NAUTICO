@@ -6,7 +6,7 @@ import { puede } from "@/modules/permisos";
 import { ROLES_TRIPULANTE } from "@/lib/etiquetas";
 import { BotonLink, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Tripulación · ERP Náutico" };
+export const metadata = { title: "Equipo · ERP Náutico" };
 
 export default async function TripulacionPage({ searchParams }: { searchParams: Promise<{ rol?: string; inactivos?: string }> }) {
   const sp = await searchParams;
@@ -21,7 +21,7 @@ export default async function TripulacionPage({ searchParams }: { searchParams: 
     }));
   return (
     <>
-      <PageHeader titulo="Tripulación" sub={`${gente.length} personas`}
+      <PageHeader titulo="Equipo" sub={`${gente.length} personas`}
         acciones={puede(s.rol, "tripulacion:escribir") && <BotonLink href="/tripulacion/nuevo">Nuevo tripulante</BotonLink>} />
       <form className="mb-4 flex flex-wrap items-end gap-3">
         <label className="text-sm">Rol

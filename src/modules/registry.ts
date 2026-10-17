@@ -7,7 +7,10 @@ import { puede, type Permiso } from "./permisos";
  * finanzas…) se registra aquí, se crea su carpeta en src/app/(app)/<ruta> y
  * se protege con `requireModulo("<id>")`.
  */
-export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones" | "nomina" | "asistencia" | "cuentas" | "gastos" | "ingresos";
+export type ModuloId =
+  | "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones" | "nomina" | "asistencia" | "cuentas" | "gastos" | "ingresos"
+  // Ya forman parte de los planes, pero aún no están construidos (proximamente: true)
+  | "horarios" | "inventario" | "transporte" | "facturacion" | "conciliacion" | "reportes";
 
 export type ModuloDef = {
   id: ModuloId;
@@ -17,6 +20,8 @@ export type ModuloDef = {
   requiere: ModuloId[];
   /** Se activa solo cuando lo necesita otro módulo; no se ofrece ni se apaga a mano. */
   implicito?: boolean;
+  /** Aparece en los planes pero todavía no existe: no se activa ni muestra enlaces. */
+  proximamente?: boolean;
   nav: { href: string; etiqueta: string; permiso?: Permiso }[];
 };
 
@@ -50,10 +55,10 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
   tripulacion: {
     id: "tripulacion",
-    nombre: "Tripulación",
+    nombre: "Equipo",
     descripcion: "Capitanes, marineros y guías, y su asignación a cada reserva.",
     requiere: ["flota", "reservas"],
-    nav: [{ href: "/tripulacion", etiqueta: "Tripulación" }],
+    nav: [{ href: "/tripulacion", etiqueta: "Equipo" }],
   },
   comisiones: {
     id: "comisiones",
@@ -98,6 +103,12 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
     requiere: ["cuentas", "reservas"],
     nav: [{ href: "/ingresos", etiqueta: "Ingresos", permiso: "ingresos:ver" }],
   },
+  horarios: { id: "horarios", nombre: "Horarios", descripcion: "Planeación de turnos y descansos del equipo.", requiere: [], proximamente: true, nav: [] },
+  inventario: { id: "inventario", nombre: "Inventario", descripcion: "Existencias, compras y salidas de insumos.", requiere: [], proximamente: true, nav: [] },
+  transporte: { id: "transporte", nombre: "Transporte", descripcion: "Traslados de clientes, unidades y choferes.", requiere: [], proximamente: true, nav: [] },
+  facturacion: { id: "facturacion", nombre: "Facturación", descripcion: "Facturas recibidas de proveedores y emitidas a clientes (CFDI).", requiere: [], proximamente: true, nav: [] },
+  conciliacion: { id: "conciliacion", nombre: "Conciliación bancaria", descripcion: "Cuadre de tus cuentas contra los estados de cuenta del banco.", requiere: [], proximamente: true, nav: [] },
+  reportes: { id: "reportes", nombre: "Gráficas, dashboard y reportes", descripcion: "Indicadores y reportes de toda la operación.", requiere: [], proximamente: true, nav: [] },
   calendario: {
     id: "calendario",
     nombre: "Calendario",
@@ -109,11 +120,66 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
 
 export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "ingresos", "gastos", "cuentas", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
 
-export const MODULOS_POR_PLAN: Record<Plan, ModuloId[]> = {
-  PRUEBA: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia", "gastos", "ingresos"],
-  BASICO: ["nucleo", "flota", "reservas"],
-  PRO: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia", "gastos", "ingresos"],
+/** Lo que incluye cada plan, en el orden y con los nombres con que se vende. Cada plan incluye todo lo
+ *  anterior. Una característica puede cubrir varios módulos (p. ej. el calendario necesita las reservas). */
+export type Caracteristica = { etiqueta: string; modulos: ModuloId[] };
+export type PlanDef = { nombre: string; precioMxnMensual: number | null; resumen: string; incluye?: Plan; caracteristicas: Caracteristica[] };
+
+export const PLANES: Record<Plan, PlanDef> = {
+  PRUEBA: { nombre: "Prueba", precioMxnMensual: null, resumen: "Todo lo disponible, para conocer el sistema.", caracteristicas: [] },
+  CONTROL: {
+    nombre: "Control", precioMxnMensual: 6000, resumen: "Para organizar la operación básica.",
+    caracteristicas: [
+      { etiqueta: "Calendario operativo", modulos: ["calendario", "reservas"] },
+      { etiqueta: "Horarios", modulos: ["horarios"] },
+      { etiqueta: "Ingresos", modulos: ["ingresos"] },
+      { etiqueta: "Gastos", modulos: ["gastos"] },
+      { etiqueta: "Flota", modulos: ["flota"] },
+    ],
+  },
+  GESTION: {
+    nombre: "Gestión", precioMxnMensual: 10000, resumen: "Para gestionar la operación y sus recursos.", incluye: "CONTROL",
+    caracteristicas: [
+      { etiqueta: "Inventario", modulos: ["inventario"] },
+      { etiqueta: "Equipo", modulos: ["tripulacion"] },
+      { etiqueta: "Transporte", modulos: ["transporte"] },
+      { etiqueta: "Facturación", modulos: ["facturacion"] },
+    ],
+  },
+  ENTERPRISE: {
+    nombre: "Enterprise", precioMxnMensual: 15000, resumen: "Para integrar la gestión administrativa, financiera y operativa.", incluye: "GESTION",
+    caracteristicas: [
+      { etiqueta: "Conciliación bancaria", modulos: ["conciliacion"] },
+      { etiqueta: "Asistencia + nómina", modulos: ["asistencia", "nomina"] },
+      { etiqueta: "Comisiones", modulos: ["comisiones"] },
+      { etiqueta: "Gráficas, dashboard y reportes", modulos: ["reportes"] },
+    ],
+  },
 };
+
+/** Planes de pago, de menor a mayor. */
+export const PLANES_DE_PAGO: Plan[] = ["CONTROL", "GESTION", "ENTERPRISE"];
+
+/** Todas las características de un plan, incluyendo las de los planes que incluye. */
+export function caracteristicasDe(plan: Plan): Caracteristica[] {
+  if (plan === "PRUEBA") return PLANES_DE_PAGO.flatMap((p) => PLANES[p].caracteristicas);
+  const def = PLANES[plan];
+  return [...(def.incluye ? caracteristicasDe(def.incluye) : []), ...def.caracteristicas];
+}
+
+/** Módulos que habilita cada plan (núcleo siempre; incluye los "próximamente", que se activan al construirse). */
+export const MODULOS_POR_PLAN = Object.fromEntries(
+  (Object.keys(PLANES) as Plan[]).map((p) => [p, ["nucleo", ...new Set(caracteristicasDe(p).flatMap((c) => c.modulos))] as ModuloId[]]),
+) as Record<Plan, ModuloId[]>;
+
+/** Un módulo "próximamente" no se activa aunque el plan lo incluya. */
+export const esConstruido = (id: ModuloId) => !MODULOS[id].proximamente;
+
+/** Lo que de verdad ve una empresa: lo que su plan permite ∩ lo que tiene activado, ya con dependencias. */
+export function modulosEfectivos(plan: Plan, guardados: string[]): ModuloId[] {
+  const permitidos = new Set<string>(MODULOS_POR_PLAN[plan]);
+  return modulosActivos(guardados.filter((m) => permitidos.has(m)));
+}
 
 const IDS = new Set<string>(Object.keys(MODULOS));
 
@@ -121,7 +187,7 @@ const IDS = new Set<string>(Object.keys(MODULOS));
  *  descartando los que les falte una dependencia. */
 export function modulosActivos(guardados: string[]): ModuloId[] {
   const set = new Set<ModuloId>(["nucleo"]);
-  for (const g of guardados) if (IDS.has(g)) set.add(g as ModuloId);
+  for (const g of guardados) if (IDS.has(g) && esConstruido(g as ModuloId)) set.add(g as ModuloId);
   // Cuentas y caja acompaña a Gastos e Ingresos: no se compra ni se apaga por separado
   if (set.has("gastos") || set.has("ingresos")) set.add("cuentas");
   let cambio = true;

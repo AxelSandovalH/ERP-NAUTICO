@@ -6,7 +6,7 @@ import { requireSesion } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { puede } from "@/modules/permisos";
 import { withTenant } from "@/lib/db/tenant";
-import { MODULOS, MODULOS_POR_PLAN, modulosActivos } from "@/modules/registry";
+import { MODULOS, MODULOS_POR_PLAN, esConstruido, modulosActivos } from "@/modules/registry";
 import type { EstadoForm } from "@/components/formulario";
 
 async function admin() {
@@ -20,7 +20,7 @@ export async function guardarModulos(_: EstadoForm, fd: FormData): Promise<Estad
   const t = await prisma.tenant.findUniqueOrThrow({ where: { id: s.tenantId } });
   const permitidos = new Set<string>(MODULOS_POR_PLAN[t.plan]);
   // Solo módulos incluidos en el plan; el resultado se normaliza con dependencias
-  const elegidos = fd.getAll("modulo").map(String).filter((m) => permitidos.has(m) && m in MODULOS);
+  const elegidos = fd.getAll("modulo").map(String).filter((m) => permitidos.has(m) && m in MODULOS && esConstruido(m as keyof typeof MODULOS));
   const final = modulosActivos(elegidos);
   await prisma.tenant.update({ where: { id: s.tenantId }, data: { modulos: final } });
   revalidatePath("/", "layout");

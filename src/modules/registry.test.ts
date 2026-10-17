@@ -1,63 +1,113 @@
 import { describe, expect, it } from "vitest";
-import { MODULOS, MODULOS_POR_PLAN, modulosActivos, navDe } from "./registry";
+import { MODULOS, MODULOS_POR_PLAN, PLANES, PLANES_DE_PAGO, caracteristicasDe, esConstruido, modulosActivos, modulosEfectivos, navDe, type ModuloId } from "./registry";
 import { puede } from "./permisos";
+
+const hrefs = (plan: Parameters<typeof modulosEfectivos>[0], rol: "ADMIN" | "GERENTE" | "VENDEDOR" | "OPERACIONES" = "ADMIN") =>
+  navDe(modulosEfectivos(plan, MODULOS_POR_PLAN[plan]), rol).map((n) => n.href);
 
 describe("registro de módulos", () => {
   it("siempre incluye núcleo e ignora ids desconocidos", () => {
     expect(modulosActivos(["flota", "inexistente"]).sort()).toEqual(["flota", "nucleo"]);
   });
   it("descarta módulos con dependencias faltantes (en cascada)", () => {
-    // calendario requiere flota+reservas; reservas requiere flota
-    expect(modulosActivos(["reservas", "calendario"])).toEqual(["nucleo"]);
-    expect(modulosActivos(["flota", "calendario"]).sort()).toEqual(["flota", "nucleo"]);
+    expect(modulosActivos(["reservas", "calendario"])).toEqual(["nucleo"]); // calendario y reservas necesitan flota
+    expect(modulosActivos(["flota", "calendario"]).sort()).toEqual(["flota", "nucleo"]); // calendario necesita reservas
   });
-  it("el plan básico no trae tripulación ni comisiones", () => {
-    const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.BASICO), "ADMIN").map((n) => n.href);
-    expect(hrefs).not.toContain("/tripulacion");
-    expect(hrefs).not.toContain("/comisiones");
-  });
-  it("tripulación y comisiones se apagan si falta reservas", () => {
+  it("tripulación, comisiones, nómina y asistencia dependen de lo que necesitan", () => {
     expect(modulosActivos(["flota", "tripulacion", "comisiones"]).sort()).toEqual(["flota", "nucleo"]);
-  });
-  it("el plan básico no trae nómina ni asistencia; asistencia se apaga sin nómina", () => {
-    const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.BASICO), "ADMIN").map((n) => n.href);
-    expect(hrefs).not.toContain("/nomina");
-    expect(hrefs).not.toContain("/asistencia");
-    expect(modulosActivos(["flota", "asistencia"]).sort()).toEqual(["flota", "nucleo"]);
+    expect(modulosActivos(["flota", "asistencia"]).sort()).toEqual(["flota", "nucleo"]); // asistencia necesita nómina
     expect(modulosActivos(["asistencia", "nomina"]).sort()).toEqual(["asistencia", "nomina", "nucleo"]);
-  });
-  it("todos checan asistencia; solo admin y gerente ven la nómina", () => {
-    const hrefs = (rol: "ADMIN" | "GERENTE" | "VENDEDOR" | "OPERACIONES") => navDe(modulosActivos(MODULOS_POR_PLAN.PRO), rol).map((n) => n.href);
-    for (const r of ["ADMIN", "GERENTE", "VENDEDOR", "OPERACIONES"] as const) expect(hrefs(r)).toContain("/asistencia");
-    expect(hrefs("VENDEDOR")).not.toContain("/nomina");
-    expect(hrefs("OPERACIONES")).not.toContain("/nomina");
-    expect(hrefs("GERENTE")).toContain("/nomina");
   });
   it("cuentas acompaña a gastos o ingresos y no se ofrece aparte; ingresos necesita reservas", () => {
     expect(modulosActivos(["flota", "gastos"]).sort()).toEqual(["cuentas", "flota", "gastos", "nucleo"]);
     expect(modulosActivos(["flota", "reservas", "ingresos"]).sort()).toEqual(["cuentas", "flota", "ingresos", "nucleo", "reservas"]);
-    // ingresos sin reservas se descarta, y con él cuentas (nadie la usa)
-    expect(modulosActivos(["flota", "ingresos"]).sort()).toEqual(["flota", "nucleo"]);
+    expect(modulosActivos(["flota", "ingresos"]).sort()).toEqual(["flota", "nucleo"]); // sin reservas se descarta, y con él cuentas
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
-  it("finanzas: gerente y admin ven todo; operaciones solo registra gastos; vendedor nada", () => {
-    const hrefs = (rol: "ADMIN" | "GERENTE" | "VENDEDOR" | "OPERACIONES") => navDe(modulosActivos(MODULOS_POR_PLAN.PRO), rol).map((n) => n.href);
-    expect(hrefs("GERENTE")).toEqual(expect.arrayContaining(["/gastos", "/ingresos", "/cuentas"]));
-    expect(hrefs("OPERACIONES")).toContain("/gastos");
-    expect(hrefs("OPERACIONES")).not.toContain("/ingresos");
-    expect(hrefs("OPERACIONES")).not.toContain("/cuentas");
-    for (const r of ["/gastos", "/ingresos", "/cuentas"]) expect(hrefs("VENDEDOR")).not.toContain(r);
+  it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
+    for (const id of ["horarios", "inventario", "transporte", "facturacion", "conciliacion", "reportes"] as ModuloId[]) {
+      expect(esConstruido(id)).toBe(false);
+      expect(modulosActivos(["flota", id])).not.toContain(id);
+      expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
+    }
   });
-  it("el plan básico no trae calendario", () => {
-    expect(navDe(modulosActivos(MODULOS_POR_PLAN.BASICO)).map((n) => n.href)).not.toContain("/calendario");
+});
+
+describe("planes y precios", () => {
+  it("los precios son los de FleetNautic", () => {
+    expect(PLANES.CONTROL.precioMxnMensual).toBe(6000);
+    expect(PLANES.GESTION.precioMxnMensual).toBe(10000);
+    expect(PLANES.ENTERPRISE.precioMxnMensual).toBe(15000);
+    expect(PLANES.PRUEBA.precioMxnMensual).toBeNull();
+    expect(PLANES_DE_PAGO).toEqual(["CONTROL", "GESTION", "ENTERPRISE"]);
   });
-  it("el plan pro trae toda la navegación", () => {
-    const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.PRO), "ADMIN").map((n) => n.href);
-    expect(hrefs).toEqual(["/dashboard", "/configuracion", "/calendario", "/reservas", "/clientes", "/ingresos", "/gastos", "/cuentas", "/tripulacion", "/comisiones", "/asistencia", "/nomina", "/flota"]);
+  it("cada plan incluye todo lo del anterior", () => {
+    const m = (p: "CONTROL" | "GESTION" | "ENTERPRISE") => new Set(MODULOS_POR_PLAN[p]);
+    for (const x of m("CONTROL")) expect(m("GESTION").has(x)).toBe(true);
+    for (const x of m("GESTION")) expect(m("ENTERPRISE").has(x)).toBe(true);
+    expect(m("GESTION").size).toBeGreaterThan(m("CONTROL").size);
+    expect(m("ENTERPRISE").size).toBeGreaterThan(m("GESTION").size);
   });
+  it("las características de cada plan son las del pricing, en orden", () => {
+    const e = (p: Parameters<typeof caracteristicasDe>[0]) => caracteristicasDe(p).map((c) => c.etiqueta);
+    expect(e("CONTROL")).toEqual(["Calendario operativo", "Horarios", "Ingresos", "Gastos", "Flota"]);
+    expect(e("GESTION")).toEqual([...e("CONTROL"), "Inventario", "Equipo", "Transporte", "Facturación"]);
+    expect(e("ENTERPRISE")).toEqual([...e("GESTION"), "Conciliación bancaria", "Asistencia + nómina", "Comisiones", "Gráficas, dashboard y reportes"]);
+  });
+  it("la prueba incluye todas las características de pago", () => {
+    expect(caracteristicasDe("PRUEBA").map((c) => c.etiqueta)).toEqual(e("ENTERPRISE"));
+    function e(p: Parameters<typeof caracteristicasDe>[0]) { return caracteristicasDe(p).map((c) => c.etiqueta); }
+  });
+  it("todos los módulos de los planes existen en el registro", () => {
+    for (const p of Object.keys(PLANES) as (keyof typeof PLANES)[]) for (const id of MODULOS_POR_PLAN[p]) expect(MODULOS[id]).toBeDefined();
+  });
+});
+
+describe("qué ve cada plan", () => {
+  it("Control: calendario, reservas y clientes, ingresos, gastos, cuentas y flota; nada de equipo ni nómina", () => {
+    const h = hrefs("CONTROL");
+    expect(h).toEqual(expect.arrayContaining(["/calendario", "/reservas", "/clientes", "/ingresos", "/gastos", "/cuentas", "/flota"]));
+    for (const x of ["/tripulacion", "/comisiones", "/asistencia", "/nomina"]) expect(h).not.toContain(x);
+  });
+  it("Gestión suma Equipo; sigue sin comisiones ni nómina", () => {
+    const h = hrefs("GESTION");
+    expect(h).toContain("/tripulacion");
+    for (const x of ["/comisiones", "/asistencia", "/nomina"]) expect(h).not.toContain(x);
+    expect(navDe(modulosEfectivos("GESTION", MODULOS_POR_PLAN.GESTION), "ADMIN").find((n) => n.href === "/tripulacion")?.etiqueta).toBe("Equipo");
+  });
+  it("Enterprise y Prueba ven todo lo construido", () => {
+    for (const p of ["ENTERPRISE", "PRUEBA"] as const) expect(hrefs(p)).toEqual(expect.arrayContaining(["/calendario", "/ingresos", "/gastos", "/tripulacion", "/comisiones", "/asistencia", "/nomina", "/flota"]));
+  });
+  it("el plan es el tope: bajar de plan quita módulos aunque sigan guardados", () => {
+    const todos = MODULOS_POR_PLAN.ENTERPRISE as string[];
+    expect(modulosEfectivos("ENTERPRISE", todos)).toContain("nomina");
+    expect(modulosEfectivos("CONTROL", todos)).not.toContain("nomina");
+    expect(modulosEfectivos("CONTROL", todos)).not.toContain("tripulacion");
+    expect(modulosEfectivos("CONTROL", todos)).toContain("gastos");
+    expect(modulosEfectivos("GESTION", todos)).toContain("tripulacion");
+  });
+  it("la empresa puede apagar módulos dentro de su plan, pero nunca encender los de otro", () => {
+    expect(modulosEfectivos("CONTROL", ["flota", "reservas", "calendario"]).sort()).toEqual(["calendario", "flota", "nucleo", "reservas"]);
+    expect(modulosEfectivos("CONTROL", ["flota", "reservas", "comisiones"])).not.toContain("comisiones");
+  });
+});
+
+describe("navegación por rol", () => {
   it("configuración solo se muestra al admin", () => {
-    const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.PRO), "VENDEDOR").map((n) => n.href);
-    expect(hrefs).not.toContain("/configuracion");
+    expect(hrefs("ENTERPRISE", "ADMIN")).toContain("/configuracion");
+    expect(hrefs("ENTERPRISE", "VENDEDOR")).not.toContain("/configuracion");
+  });
+  it("todos checan asistencia; solo admin y gerente ven nómina", () => {
+    for (const r of ["ADMIN", "GERENTE", "VENDEDOR", "OPERACIONES"] as const) expect(hrefs("ENTERPRISE", r)).toContain("/asistencia");
+    expect(hrefs("ENTERPRISE", "VENDEDOR")).not.toContain("/nomina");
+    expect(hrefs("ENTERPRISE", "OPERACIONES")).not.toContain("/nomina");
+    expect(hrefs("ENTERPRISE", "GERENTE")).toContain("/nomina");
+  });
+  it("finanzas: gerente y admin ven todo; operaciones solo registra gastos; vendedor nada", () => {
+    expect(hrefs("ENTERPRISE", "GERENTE")).toEqual(expect.arrayContaining(["/gastos", "/ingresos", "/cuentas"]));
+    expect(hrefs("ENTERPRISE", "OPERACIONES")).toContain("/gastos");
+    for (const x of ["/ingresos", "/cuentas"]) expect(hrefs("ENTERPRISE", "OPERACIONES")).not.toContain(x);
+    for (const x of ["/gastos", "/ingresos", "/cuentas"]) expect(hrefs("ENTERPRISE", "VENDEDOR")).not.toContain(x);
   });
 });
 
@@ -66,7 +116,7 @@ describe("permisos", () => {
     expect(puede("ADMIN", "usuarios:administrar")).toBe(true);
     expect(puede("GERENTE", "usuarios:administrar")).toBe(false);
   });
-  it("comisiones: el vendedor ve las suyas pero no administra; operaciones asigna tripulación", () => {
+  it("comisiones: el vendedor ve las suyas pero no administra; operaciones asigna equipo", () => {
     expect(puede("VENDEDOR", "comisiones:ver_propias")).toBe(true);
     expect(puede("VENDEDOR", "comisiones:administrar")).toBe(false);
     expect(puede("OPERACIONES", "comisiones:ver_propias")).toBe(false);

@@ -9,9 +9,10 @@ datasource db {
 // ─── IDENTIDAD (sin RLS: se consulta antes de saber el tenant) ───────────────
 
 enum Plan {
-  PRUEBA
-  BASICO
-  PRO
+  PRUEBA // todo lo disponible, por tiempo limitado
+  CONTROL
+  GESTION
+  ENTERPRISE
 }
 
 enum RolUsuario {
