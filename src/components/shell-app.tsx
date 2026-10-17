@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Anchor, CalendarDays, ClipboardList, LayoutDashboard, LogOut, Percent, Settings, Ship, Users, UsersRound, type LucideIcon } from "lucide-react";
+import { CalendarDays, ClipboardList, LayoutDashboard, LogOut, Percent, Settings, Ship, Users, UsersRound, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
+import { Logo, LogoMarca } from "./logo";
 
 const ICONOS: Record<string, LucideIcon> = {
   "/dashboard": LayoutDashboard,
@@ -35,13 +36,13 @@ export function ShellApp({ nav, tenantNombre, usuarioNombre, salir, children }: 
         <div className={`flex items-center justify-between px-4 py-3 md:block md:py-5 ${compacto ? "md:px-0 md:text-center" : ""}`}>
           {compacto ? (
             <>
-              <Anchor className="hidden h-6 w-6 text-brand md:mx-auto md:block" aria-label="ERP Náutico" />
-              <div className="md:hidden"><p className="text-lg font-semibold">⚓ ERP Náutico</p></div>
+              <LogoMarca className="mx-auto hidden h-5 w-auto md:block" titulo="ERP Náutico" />
+              <div className="md:hidden"><Logo /></div>
             </>
           ) : (
             <div>
-              <p className="text-lg font-semibold">⚓ ERP Náutico</p>
-              <p className="truncate text-xs text-muted">{tenantNombre}</p>
+              <Logo />
+              <p className="mt-1 truncate text-xs text-muted">{tenantNombre}</p>
             </div>
           )}
         </div>

@@ -9,6 +9,8 @@
   --brand: #0369a1;
   --brand-fg: #ffffff;
   --brand-soft: #e0f2fe;
+  --logo-bote: #0B132B;
+  --logo-ola: #00B7BD;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +23,7 @@
     --brand: #38bdf8;
     --brand-fg: #04121f;
     --brand-soft: #0c2a40;
+    --logo-bote: #E2E8F0;
   }
 }
 
