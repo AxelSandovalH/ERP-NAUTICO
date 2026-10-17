@@ -23,12 +23,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   const datos = tieneReservas
     ? await withTenant(s.tenantId, async (tx) => {
         const activas = { estado: { not: "CANCELADA" as const } };
-        const [hoyRes, proximas, delMes, pagosMes] = await Promise.all([
-          tx.reserva.findMany({ where: { fecha: aDate(hoy), ...activas }, orderBy: { inicioMin: "asc" }, include: { cliente: true, embarcacion: true } }),
-          tx.reserva.count({ where: { fecha: { gt: aDate(hoy) }, estado: { in: ["PENDIENTE", "CONFIRMADA"] } } }),
-          tx.reserva.aggregate({ where: { fecha: { gte: aDate(`${mes}-01`), lt: aDate(`${sumarMeses(mes, 1)}-01`) }, ...activas }, _sum: { totalCentavos: true }, _count: true }),
-          tx.pago.aggregate({ where: { reserva: { fecha: { gte: aDate(`${mes}-01`), lt: aDate(`${sumarMeses(mes, 1)}-01`) } } }, _sum: { montoCentavos: true } }),
-        ]);
+        const rangoMes = { gte: aDate(`${mes}-01`), lt: aDate(`${sumarMeses(mes, 1)}-01`) };
+        // Secuencial: una transacción usa un solo cliente de pg
+        const hoyRes = await tx.reserva.findMany({ where: { fecha: aDate(hoy), ...activas }, orderBy: { inicioMin: "asc" }, include: { cliente: true, embarcacion: true } });
+        const proximas = await tx.reserva.count({ where: { fecha: { gt: aDate(hoy) }, estado: { in: ["PENDIENTE", "CONFIRMADA"] } } });
+        const delMes = await tx.reserva.aggregate({ where: { fecha: rangoMes, ...activas }, _sum: { totalCentavos: true }, _count: true });
+        const pagosMes = await tx.pago.aggregate({ where: { reserva: { fecha: rangoMes } }, _sum: { montoCentavos: true } });
         return { hoyRes, proximas, totalMes: delMes._sum.totalCentavos ?? 0, nMes: delMes._count, cobradoMes: pagosMes._sum.montoCentavos ?? 0 };
       })
     : null;

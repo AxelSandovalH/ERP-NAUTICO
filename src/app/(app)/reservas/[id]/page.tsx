@@ -18,8 +18,9 @@ const SIGUIENTES: Record<string, { a: "PENDIENTE" | "CONFIRMADA" | "COMPLETADA" 
   CANCELADA: [{ a: "PENDIENTE", etiqueta: "Reactivar" }],
 };
 
-export default async function ReservaPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function ReservaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ from?: string; vista?: string; fecha?: string }> }) {
   const { id } = await params;
+  const sp = await searchParams;
   const s = await requireModulo("reservas");
   const r = await withTenant(s.tenantId, (tx) =>
     tx.reserva.findUnique({ where: { id }, include: { cliente: true, embarcacion: true, tarifa: true, creador: true, pagos: { orderBy: { pagadoEn: "asc" } } } }));
@@ -28,8 +29,12 @@ export default async function ReservaPage({ params }: { params: Promise<{ id: st
   const saldo = r.totalCentavos - pagado;
   const escribir = puede(s.rol, "reservas:escribir");
   const cobrar = puede(s.rol, "reservas:cobrar");
+  const volver = sp.from === "calendario" && s.modulos.includes("calendario")
+    ? `/calendario?vista=${encodeURIComponent(sp.vista ?? "dayGridMonth")}${sp.fecha ? `&fecha=${encodeURIComponent(sp.fecha)}` : ""}`
+    : null;
   return (
     <>
+      {volver && <Link href={volver} className="mb-3 inline-block text-sm text-muted hover:text-foreground">← Volver al calendario</Link>}
       <PageHeader titulo={`Reserva #${r.folio}`} sub={fechaLarga(r.fecha.toISOString().slice(0, 10))}
         acciones={escribir && SIGUIENTES[r.estado].map((x) => (
           <BotonAccion key={x.a} etiqueta={x.etiqueta} variante={x.peligro ? "peligro" : "primario"}

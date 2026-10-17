@@ -1,60 +1,37 @@
-import Link from "next/link";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
-import { aDate, diasDelMes, hoyIso, mesDe, nombreMes, offsetInicioMes, sumarMeses } from "@/lib/fechas";
-import { BotonLink, PageHeader } from "@/components/ui";
 import { puede } from "@/modules/permisos";
+import { esIso, hoyIso, mesDe, sumarDias, sumarMeses } from "@/lib/fechas";
+import { fetchEventos } from "@/lib/calendario/eventos";
+import { CalendarioOperativo } from "@/components/calendario/calendario-operativo";
 
-export const metadata = { title: "Calendario · ERP Náutico" };
+export const metadata = { title: "Calendario operativo · ERP Náutico" };
 
-export default async function CalendarioPage({ searchParams }: { searchParams: Promise<{ mes?: string }> }) {
+export default async function CalendarioPage({ searchParams }: { searchParams: Promise<{ vista?: string; fecha?: string }> }) {
   const sp = await searchParams;
   const s = await requireModulo("calendario");
-  const hoy = hoyIso(s.zonaHoraria);
-  const mes = sp.mes && /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.mes) ? sp.mes : mesDe(hoy);
-  const n = diasDelMes(mes);
-  const reservas = await withTenant(s.tenantId, (tx) =>
-    tx.reserva.findMany({
-      where: { fecha: { gte: aDate(`${mes}-01`), lte: aDate(`${mes}-${String(n).padStart(2, "0")}`) }, estado: { not: "CANCELADA" } },
-      select: { fecha: true, embarcacion: { select: { color: true } } },
-    }));
-  const porDia = new Map<string, string[]>();
-  for (const r of reservas) {
-    const k = r.fecha.toISOString().slice(0, 10);
-    porDia.set(k, [...(porDia.get(k) ?? []), r.embarcacion.color]);
-  }
-  const celdas: (number | null)[] = [...Array(offsetInicioMes(mes)).fill(null), ...Array.from({ length: n }, (_, i) => i + 1)];
+  // Ventana inicial: mes actual + el siguiente (anclada a la zona del negocio;
+  // en UTC el fin de mes por la tarde ya sería "mes siguiente")
+  const mes = mesDe(hoyIso(s.zonaHoraria));
+  // La cuadrícula del mes arranca en el lunes anterior al día 1: se cubren 7 días de más
+  const ventana = { start: sumarDias(`${mes}-01`, -7), end: sumarDias(`${sumarMeses(mes, 2)}-01`, 7) };
+  const { eventos, flota } = await withTenant(s.tenantId, async (tx) => ({
+    eventos: await fetchEventos(tx, ventana.start, ventana.end),
+    flota: await tx.embarcacion.findMany({
+      where: { estado: { not: "INACTIVA" } }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, color: true },
+    }),
+  }));
   return (
-    <>
-      <PageHeader titulo={nombreMes(mes)} sub="Reservas activas por día"
-        acciones={<>
-          <BotonLink variante="suave" href={`/calendario?mes=${sumarMeses(mes, -1)}`}>←</BotonLink>
-          <BotonLink variante="suave" href={`/calendario?mes=${mesDe(hoy)}`}>Hoy</BotonLink>
-          <BotonLink variante="suave" href={`/calendario?mes=${sumarMeses(mes, 1)}`}>→</BotonLink>
-          {puede(s.rol, "reservas:escribir") && <BotonLink href="/reservas/nueva">Nueva reserva</BotonLink>}
-        </>} />
-      <div className="grid grid-cols-7 gap-px overflow-hidden rounded-xl border border-line bg-line text-sm">
-        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
-          <div key={d} className="bg-surface px-2 py-2 text-center text-xs font-semibold uppercase text-muted">{d}</div>
-        ))}
-        {celdas.map((dia, i) => {
-          if (!dia) return <div key={i} className="min-h-20 bg-surface/60" />;
-          const iso = `${mes}-${String(dia).padStart(2, "0")}`;
-          const colores = porDia.get(iso) ?? [];
-          return (
-            <Link key={i} href={`/calendario/${iso}`}
-              className={`min-h-20 bg-surface p-2 transition hover:bg-brand-soft ${iso === hoy ? "ring-2 ring-inset ring-brand" : ""}`}>
-              <div className="flex items-center justify-between">
-                <span className="font-medium">{dia}</span>
-                {colores.length > 0 && <span className="text-xs text-muted">{colores.length}</span>}
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {colores.slice(0, 8).map((c, j) => <span key={j} className="h-2 w-2 rounded-full" style={{ background: c }} />)}
-              </div>
-            </Link>
-          );
-        })}
-      </div>
-    </>
+    <div className="h-[calc(100dvh-3rem)] min-h-[560px]">
+      <CalendarioOperativo
+        eventosIniciales={eventos}
+        ventana={ventana}
+        flota={flota}
+        puedeCrear={puede(s.rol, "reservas:escribir")}
+        moneda={s.moneda}
+        vistaInicial={sp.vista ?? "dayGridMonth"}
+        fechaInicial={esIso(sp.fecha) ? sp.fecha : undefined}
+      />
+    </div>
   );
 }
