@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate deploy",
     "db:seed": "tsx prisma/seed.ts",
     "postinstall": "prisma generate",
-    "db:local": "docker compose up -d"
+    "db:local": "docker compose up -d",
+    "db:seed:comisiones": "tsx prisma/seed-comisiones.ts"
   },
   "dependencies": {
     "@fullcalendar/core": "^6.1.22",

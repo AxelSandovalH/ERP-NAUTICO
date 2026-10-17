@@ -16,6 +16,8 @@ export type EntradaReserva = {
   totalCentavos: number;
   notas?: string;
   creadorId?: string;
+  /** Quién vendió / trajo la reserva: define a quién se le calcula comisión */
+  beneficiarioId?: string | null;
   /** Al editar: se ignora la propia reserva al buscar traslapes. */
   ignorarReservaId?: string;
 };
@@ -61,7 +63,7 @@ export async function crearReservaTx(tx: Tx, e: EntradaReserva) {
       tenantId: e.tenantId, folio, embarcacionId: e.embarcacionId, clienteId: e.clienteId,
       tarifaId: e.tarifaId ?? null, fecha: aDate(e.fecha), inicioMin: e.inicioMin, finMin: e.finMin,
       pax: e.pax, origen: e.origen, totalCentavos: e.totalCentavos, notas: e.notas || null,
-      creadorId: e.creadorId, estado: "PENDIENTE",
+      creadorId: e.creadorId, beneficiarioId: e.beneficiarioId ?? null, estado: "PENDIENTE",
     },
   });
 }

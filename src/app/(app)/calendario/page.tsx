@@ -22,7 +22,7 @@ export default async function CalendarioPage({ searchParams }: { searchParams: P
     }),
   }));
   return (
-    <div className="h-[calc(100dvh-3rem)] min-h-[560px]">
+    <div className="h-[calc(100dvh-1.5rem)] min-h-[560px]">
       <CalendarioOperativo
         eventosIniciales={eventos}
         ventana={ventana}

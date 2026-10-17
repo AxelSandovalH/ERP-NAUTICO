@@ -12,7 +12,10 @@ export async function fetchEventos(tx: Tx, start: string, end: string): Promise<
   const reservas = await
     tx.reserva.findMany({
       where: { fecha: { gte: aDate(start), lt: aDate(end) }, estado: { not: "CANCELADA" } },
-      include: { cliente: true, embarcacion: true, creador: true, pagos: { select: { montoCentavos: true } } },
+      include: {
+        cliente: true, embarcacion: true, creador: true, pagos: { select: { montoCentavos: true } },
+        tripulantes: { where: { rol: "CAPITAN" }, include: { tripulante: { select: { nombre: true, apellido: true } } } },
+      },
       orderBy: [{ fecha: "asc" }, { inicioMin: "asc" }],
     });
   const bloqueos = await tx.bloqueoEmbarcacion.findMany({
@@ -54,6 +57,7 @@ export async function fetchEventos(tx: Tx, start: string, end: string): Promise<
         horaInicio: hhmm(r.inicioMin),
         horaFin: hhmm(r.finMin),
         notas: r.notas,
+        capitan: r.tripulantes[0] ? `${r.tripulantes[0].tripulante.nombre} ${r.tripulantes[0].tripulante.apellido}`.trim() : null,
         sinAnticipo: cobro === "SIN_PAGO" && r.estado !== "COMPLETADA",
         textoOscuro: fondoClaro(color),
       },

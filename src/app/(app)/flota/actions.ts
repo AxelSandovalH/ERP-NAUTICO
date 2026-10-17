@@ -15,7 +15,17 @@ const embarcacionSchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color inválido"),
   estado: z.enum(["ACTIVA", "MANTENIMIENTO", "INACTIVA"]).default("ACTIVA"),
   notas: z.string().trim().max(2000).optional(),
+  precioCasa: z.string().optional(),
+  paxIncluidosCasa: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().int().min(1).max(500).optional()),
+  extraPaxCasa: z.string().optional(),
 });
+
+/** Separa el precio casa (que viene en pesos) del resto de campos y lo pasa a centavos. */
+function datosEmbarcacion(d: z.infer<typeof embarcacionSchema>) {
+  const { precioCasa, extraPaxCasa, paxIncluidosCasa, ...resto } = d;
+  const aCentavos = (t?: string) => (t && t.trim() ? pesosACentavos(t) : null);
+  return { ...resto, precioCasaCentavos: aCentavos(precioCasa), paxIncluidosCasa: paxIncluidosCasa ?? null, extraPaxCasaCentavos: aCentavos(extraPaxCasa) };
+}
 
 export async function crearEmbarcacion(_: EstadoForm, fd: FormData): Promise<EstadoForm> {
   const s = await requireModulo("flota", "flota:escribir");
@@ -24,7 +34,7 @@ export async function crearEmbarcacion(_: EstadoForm, fd: FormData): Promise<Est
   let id: string;
   try {
     id = (await withTenant(s.tenantId, (tx) =>
-      tx.embarcacion.create({ data: { ...p.data, tenantId: s.tenantId } }))).id;
+      tx.embarcacion.create({ data: { ...datosEmbarcacion(p.data), tenantId: s.tenantId } }))).id;
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") return { error: "Ya tienes una embarcación con ese nombre." };
     throw e;
@@ -38,7 +48,7 @@ export async function actualizarEmbarcacion(id: string, _: EstadoForm, fd: FormD
   const p = embarcacionSchema.safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: p.error.issues[0].message };
   try {
-    const r = await withTenant(s.tenantId, (tx) => tx.embarcacion.updateMany({ where: { id }, data: p.data }));
+    const r = await withTenant(s.tenantId, (tx) => tx.embarcacion.updateMany({ where: { id }, data: datosEmbarcacion(p.data) }));
     if (r.count === 0) return { error: "Embarcación no encontrada." };
   } catch (e) {
     if ((e as { code?: string }).code === "P2002") return { error: "Ya tienes una embarcación con ese nombre." };

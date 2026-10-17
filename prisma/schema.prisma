@@ -22,41 +22,49 @@ enum RolUsuario {
 }
 
 model Tenant {
-  id        String   @id @default(cuid())
-  slug      String   @unique
-  nombre    String
-  plan      Plan     @default(PRUEBA)
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  nombre      String
+  plan        Plan     @default(PRUEBA)
   // Módulos activos (ids del registro en src/modules/registry.ts). El plan
   // define el conjunto por defecto; se puede ajustar por tenant.
-  modulos   String[] @default([])
-  moneda    String   @default("MXN")
+  modulos     String[] @default([])
+  moneda      String   @default("MXN")
   // Zona IANA del negocio: define qué día es "hoy" para el calendario y el panel.
-  zonaHoraria String @default("America/Mazatlan")
-  activo    Boolean  @default(true)
-  creadoEn  DateTime @default(now())
+  zonaHoraria String   @default("America/Mazatlan")
+  activo      Boolean  @default(true)
+  creadoEn    DateTime @default(now())
 
-  usuarios     Usuario[]
-  embarcaciones Embarcacion[]
-  tarifas      Tarifa[]
-  bloqueos     BloqueoEmbarcacion[]
-  clientes     Cliente[]
-  reservas     Reserva[]
-  pagos        Pago[]
+  usuarios        Usuario[]
+  embarcaciones   Embarcacion[]
+  tarifas         Tarifa[]
+  bloqueos        BloqueoEmbarcacion[]
+  clientes        Cliente[]
+  reservas        Reserva[]
+  pagos           Pago[]
+  beneficiarios   Beneficiario[]
+  tarifasComision TarifaComision[]
+  comisiones      Comision[]
+  abonosComision  AbonoComision[]
+  cierresComision CierreComision[]
+  tripulantes     Tripulante[]
 }
 
 model Usuario {
-  id           String     @id @default(cuid())
-  tenantId     String
-  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  email        String     @unique
-  nombre       String
+  id         String     @id @default(cuid())
+  tenantId   String
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email      String     @unique
+  nombre     String
   // Id del usuario en Supabase Auth (auth.users.id). Las credenciales viven allá.
-  supabaseId   String     @unique
-  rol          RolUsuario @default(VENDEDOR)
-  activo       Boolean    @default(true)
-  creadoEn     DateTime   @default(now())
+  supabaseId String     @unique
+  rol        RolUsuario @default(VENDEDOR)
+  activo     Boolean    @default(true)
+  creadoEn   DateTime   @default(now())
 
-  reservasCreadas Reserva[] @relation("ReservaCreador")
+  reservasCreadas Reserva[]     @relation("ReservaCreador")
+  beneficiario    Beneficiario?
+  tripulante      Tripulante?
 
   @@index([tenantId])
 }
@@ -79,36 +87,43 @@ enum EstadoEmbarcacion {
 }
 
 model Embarcacion {
-  id         String            @id @default(cuid())
-  tenantId   String
-  tenant     Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  nombre     String
-  tipo       TipoEmbarcacion
-  capacidad  Int
-  esloraPies Int?
-  color      String            @default("#0ea5e9") // color en el calendario
-  estado     EstadoEmbarcacion @default(ACTIVA)
-  notas      String?
-  creadoEn   DateTime          @default(now())
+  id                   String            @id @default(cuid())
+  tenantId             String
+  tenant               Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre               String
+  tipo                 TipoEmbarcacion
+  capacidad            Int
+  esloraPies           Int?
+  color                String            @default("#0ea5e9") // color en el calendario
+  estado               EstadoEmbarcacion @default(ACTIVA)
+  notas                String?
+  // "Precio casa": lo mínimo que la empresa debe recibir por un tour. Base de
+  // las comisiones PORCENTAJE_BALANCE (venta − costo base). null = sin configurar.
+  precioCasaCentavos   Int?
+  paxIncluidosCasa     Int?
+  extraPaxCasaCentavos Int?
+  creadoEn             DateTime          @default(now())
 
-  tarifas  Tarifa[]
-  bloqueos BloqueoEmbarcacion[]
-  reservas Reserva[]
+  tarifas          Tarifa[]
+  bloqueos         BloqueoEmbarcacion[]
+  reservas         Reserva[]
+  tarifasComision  TarifaComision[]
+  tripulantesFijos TripulanteEmbarcacion[]
 
   @@unique([tenantId, nombre])
   @@index([tenantId])
 }
 
 model Tarifa {
-  id            String      @id @default(cuid())
-  tenantId      String
-  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  embarcacionId String
-  embarcacion   Embarcacion @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
-  nombre        String // "Tour 4 horas", "Atardecer"
-  duracionMin   Int
+  id             String      @id @default(cuid())
+  tenantId       String
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  embarcacionId  String
+  embarcacion    Embarcacion @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
+  nombre         String // "Tour 4 horas", "Atardecer"
+  duracionMin    Int
   precioCentavos Int
-  activa        Boolean     @default(true)
+  activa         Boolean     @default(true)
 
   reservas Reserva[]
 
@@ -193,10 +208,15 @@ model Reserva {
   notas          String?
   creadorId      String?
   creador        Usuario?      @relation("ReservaCreador", fields: [creadorId], references: [id], onDelete: SetNull)
+  // Quién la vendió / trajo: define a quién se le calcula comisión
+  beneficiarioId String?
+  beneficiario   Beneficiario? @relation(fields: [beneficiarioId], references: [id], onDelete: SetNull)
   creadoEn       DateTime      @default(now())
   actualizadoEn  DateTime      @updatedAt
 
-  pagos Pago[]
+  pagos       Pago[]
+  comision    Comision?
+  tripulantes ReservaTripulante[]
 
   @@unique([tenantId, folio])
   @@index([tenantId, fecha])
@@ -222,4 +242,212 @@ model Pago {
 model FolioContador {
   tenantId String @id
   ultimo   Int    @default(0)
+}
+
+// ─── MÓDULO TRIPULACIÓN ──────────────────────────────────────────────────────
+
+enum RolTripulante {
+  CAPITAN
+  MARINERO
+  GUIA
+  COCINERO
+  FOTOGRAFO
+  OTRO
+}
+
+model Tripulante {
+  id        String        @id @default(cuid())
+  tenantId  String
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  usuarioId String?       @unique
+  usuario   Usuario?      @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  nombre    String
+  apellido  String        @default("")
+  rol       RolTripulante
+  email     String?
+  telefono  String?
+  activo    Boolean       @default(true)
+  notas     String?
+  creadoEn  DateTime      @default(now())
+
+  embarcaciones TripulanteEmbarcacion[]
+  asignaciones  ReservaTripulante[]
+
+  @@index([tenantId])
+}
+
+// Embarcaciones fijas de un tripulante (un capitán puede tener más de una)
+model TripulanteEmbarcacion {
+  tenantId      String
+  tripulanteId  String
+  tripulante    Tripulante  @relation(fields: [tripulanteId], references: [id], onDelete: Cascade)
+  embarcacionId String
+  embarcacion   Embarcacion @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
+
+  @@id([tripulanteId, embarcacionId])
+  @@index([tenantId])
+}
+
+model ReservaTripulante {
+  tenantId     String
+  reservaId    String
+  reserva      Reserva       @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  tripulanteId String
+  tripulante   Tripulante    @relation(fields: [tripulanteId], references: [id], onDelete: Cascade)
+  rol          RolTripulante
+  // "HH:MM": a qué hora debe presentarse (por defecto 2 h antes de la salida)
+  horaLlegada  String?
+
+  @@id([reservaId, tripulanteId])
+  @@index([tenantId])
+  @@index([tripulanteId])
+}
+
+// ─── MÓDULO COMISIONES ───────────────────────────────────────────────────────
+
+enum TipoBeneficiario {
+  VENDEDOR
+  AGENCIA
+  CONCIERGE
+  OTRO
+}
+
+enum TipoTarifaComision {
+  FIJO
+  PORCENTAJE
+  PORCENTAJE_BALANCE
+  SIN
+}
+
+enum EstadoComision {
+  PENDIENTE
+  PAGADA
+  CANCELADA
+}
+
+// Quien cobra comisiones: un usuario vendedor o un tercero (agencia, concierge…)
+model Beneficiario {
+  id        String           @id @default(cuid())
+  tenantId  String
+  tenant    Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre    String
+  tipo      TipoBeneficiario @default(VENDEDOR)
+  usuarioId String?          @unique
+  usuario   Usuario?         @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  contacto  String?
+  activo    Boolean          @default(true)
+  creadoEn  DateTime         @default(now())
+
+  tarifas    TarifaComision[]
+  reservas   Reserva[]
+  comisiones Comision[]
+  abonos     AbonoComision[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+// Regla de comisión. Con `origen` y/o `embarcacionId` nulos aplica a todo; entre
+// varias reglas gana la más específica (origen pesa más que embarcación).
+// `valor`: centavos si FIJO; puntos base (1250 = 12.5 %) si PORCENTAJE*.
+model TarifaComision {
+  id             String             @id @default(cuid())
+  tenantId       String
+  tenant         Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  beneficiarioId String
+  beneficiario   Beneficiario       @relation(fields: [beneficiarioId], references: [id], onDelete: Cascade)
+  embarcacionId  String?
+  embarcacion    Embarcacion?       @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
+  origen         OrigenReserva?
+  tipo           TipoTarifaComision
+  valor          Int
+  // Desde `umbralPax` pasajeros se usa `valorAlto` en lugar de `valor`
+  umbralPax      Int?
+  valorAlto      Int?
+  activa         Boolean            @default(true)
+  creadoEn       DateTime           @default(now())
+
+  @@index([tenantId])
+  @@index([beneficiarioId])
+}
+
+// Una comisión por reserva
+model Comision {
+  id             String         @id @default(cuid())
+  tenantId       String
+  tenant         Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaId      String         @unique
+  reserva        Reserva        @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  beneficiarioId String
+  beneficiario   Beneficiario   @relation(fields: [beneficiarioId], references: [id])
+  periodo        String // "YYYY-MM", del día del tour
+  baseCentavos   Int // total de la reserva sobre el que se calculó
+  montoCentavos  Int
+  pagadoCentavos Int            @default(0)
+  estado         EstadoComision @default(PENDIENTE)
+  // Texto de la regla aplicada, para explicar el monto: "12.5 % del balance (Sunseeker 80)"
+  regla          String?
+  advertencia    String? // p. ej. "Sin precio casa configurado"
+  // Monto fijado a mano: el recálculo automático ya no lo toca
+  manual         Boolean        @default(false)
+  notas          String?
+  pagadaEn       DateTime?
+  creadoEn       DateTime       @default(now())
+  actualizadoEn  DateTime       @updatedAt
+
+  aplicaciones AbonoAplicacion[]
+
+  @@index([tenantId, periodo])
+  @@index([beneficiarioId, estado])
+}
+
+// Pago a un beneficiario. Se aplica a sus comisiones más antiguas primero.
+model AbonoComision {
+  id              String       @id @default(cuid())
+  tenantId        String
+  tenant          Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  beneficiarioId  String
+  beneficiario    Beneficiario @relation(fields: [beneficiarioId], references: [id])
+  montoCentavos   Int
+  metodo          MetodoPago   @default(TRANSFERENCIA)
+  referencia      String?
+  notas           String?
+  fecha           DateTime     @default(now())
+  registradoPorId String?
+
+  aplicaciones AbonoAplicacion[]
+
+  @@index([tenantId])
+  @@index([beneficiarioId])
+}
+
+// A qué comisiones se aplicó cada abono (trazabilidad y reversa)
+model AbonoAplicacion {
+  tenantId      String
+  abonoId       String
+  abono         AbonoComision @relation(fields: [abonoId], references: [id], onDelete: Cascade)
+  comisionId    String
+  comision      Comision      @relation(fields: [comisionId], references: [id], onDelete: Cascade)
+  montoCentavos Int
+
+  @@id([abonoId, comisionId])
+  @@index([tenantId])
+  @@index([comisionId])
+}
+
+// Un periodo cerrado congela los montos: no se crean, recalculan ni ajustan
+// comisiones de ese mes. Los pagos (abonos) siguen permitidos.
+model CierreComision {
+  id               String    @id @default(cuid())
+  tenantId         String
+  tenant           Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  periodo          String // "YYYY-MM"
+  cerrado          Boolean   @default(true)
+  cerradoPorId     String?
+  cerradoEn        DateTime  @default(now())
+  reabiertoPorId   String?
+  reabiertoEn      DateTime?
+  motivoReapertura String?
+
+  @@unique([tenantId, periodo])
 }

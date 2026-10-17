@@ -4,6 +4,7 @@ import { ESTADOS_EMBARCACION, TIPOS_EMBARCACION } from "@/lib/etiquetas";
 type Valores = {
   nombre?: string; tipo?: string; capacidad?: number; esloraPies?: number | null;
   color?: string; estado?: string; notas?: string | null;
+  precioCasaCentavos?: number | null; paxIncluidosCasa?: number | null; extraPaxCasaCentavos?: number | null;
 };
 
 export function CamposEmbarcacion({ v = {}, conEstado = false }: { v?: Valores; conEstado?: boolean }) {
@@ -25,6 +26,12 @@ export function CamposEmbarcacion({ v = {}, conEstado = false }: { v?: Valores; 
           </Select>
         </Campo>
       )}
+      <fieldset className="grid gap-4 rounded-xl border border-line p-4 sm:col-span-2 sm:grid-cols-3">
+        <legend className="px-2 text-sm font-medium">Precio casa <span className="font-normal text-muted">(base de comisiones sobre balance)</span></legend>
+        <Campo etiqueta="Precio casa"><Input name="precioCasa" inputMode="decimal" defaultValue={v.precioCasaCentavos != null ? String(v.precioCasaCentavos / 100) : ""} /></Campo>
+        <Campo etiqueta="Pax incluidos"><Input name="paxIncluidosCasa" type="number" min={1} defaultValue={v.paxIncluidosCasa ?? ""} /></Campo>
+        <Campo etiqueta="Extra por pasajero"><Input name="extraPaxCasa" inputMode="decimal" defaultValue={v.extraPaxCasaCentavos != null ? String(v.extraPaxCasaCentavos / 100) : ""} /></Campo>
+      </fieldset>
       <Campo etiqueta="Notas" className="sm:col-span-2"><Textarea name="notas" defaultValue={v.notas ?? ""} /></Campo>
     </div>
   );

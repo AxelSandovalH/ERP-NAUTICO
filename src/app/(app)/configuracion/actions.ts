@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/client";
 import { requireSesion } from "@/lib/auth/session";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { puede } from "@/modules/permisos";
+import { withTenant } from "@/lib/db/tenant";
 import { MODULOS, MODULOS_POR_PLAN, modulosActivos } from "@/modules/registry";
 import type { EstadoForm } from "@/components/formulario";
 
@@ -45,9 +46,15 @@ export async function crearUsuario(_: EstadoForm, fd: FormData): Promise<EstadoF
   });
   if (error || !data.user) return { error: error?.message ?? "No se pudo crear el usuario." };
   try {
-    await prisma.usuario.create({
+    const u = await prisma.usuario.create({
       data: { tenantId: s.tenantId, supabaseId: data.user.id, nombre: p.data.nombre, email: p.data.email, rol: p.data.rol },
     });
+    // Un vendedor nace con su perfil de comisiones (sin tarifas: un administrador se las asigna)
+    if (p.data.rol === "VENDEDOR" && s.modulos.includes("comisiones")) {
+      const existe = await withTenant(s.tenantId, (tx) => tx.beneficiario.findFirst({ where: { nombre: p.data.nombre }, select: { id: true } }));
+      await withTenant(s.tenantId, (tx) =>
+        tx.beneficiario.create({ data: { tenantId: s.tenantId, nombre: existe ? `${p.data.nombre} (${p.data.email})` : p.data.nombre, tipo: "VENDEDOR", usuarioId: u.id } }));
+    }
   } catch (e) {
     await supa.auth.admin.deleteUser(data.user.id);
     throw e;

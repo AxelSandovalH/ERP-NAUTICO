@@ -8,13 +8,14 @@ import { crearReserva } from "@/app/(app)/reservas/actions";
 type Tarifa = { id: string; nombre: string; duracionMin: number; precioCentavos: number };
 type Emb = { id: string; nombre: string; capacidad: number; tarifas: Tarifa[] };
 type Cli = { id: string; nombre: string };
+type Ben = { id: string; nombre: string; tipo: string };
 
 const hhmm = (min: number) => `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 const aMin = (h: string) => { const [a, b] = h.split(":").map(Number); return a * 60 + b; };
 
 export function FormReserva({
-  embarcaciones, clientes, inicial,
-}: { embarcaciones: Emb[]; clientes: Cli[]; inicial: { fecha: string; embarcacionId?: string; inicio?: string; clienteId?: string } }) {
+  embarcaciones, clientes, beneficiarios, inicial,
+}: { embarcaciones: Emb[]; clientes: Cli[]; beneficiarios?: Ben[]; inicial: { fecha: string; embarcacionId?: string; inicio?: string; clienteId?: string; beneficiarioId?: string } }) {
   const [embId, setEmbId] = useState(inicial.embarcacionId ?? embarcaciones[0]?.id ?? "");
   const [tarifaId, setTarifaId] = useState("");
   const [inicio, setInicio] = useState(inicial.inicio ?? "10:00");
@@ -61,6 +62,15 @@ export function FormReserva({
           </Select>
         </Campo>
       </div>
+
+      {beneficiarios && (
+        <Campo etiqueta="Vendedor / agencia (comisión)" ayuda="Quién vendió o trajo la reserva: a esa persona se le calcula la comisión">
+          <Select name="beneficiarioId" defaultValue={inicial.beneficiarioId ?? ""}>
+            <option value="">— Sin comisión —</option>
+            {beneficiarios.map((b) => <option key={b.id} value={b.id}>{b.nombre} ({b.tipo.toLowerCase()})</option>)}
+          </Select>
+        </Campo>
+      )}
 
       <fieldset className="space-y-4 rounded-xl border border-line p-4">
         <legend className="px-2 text-sm font-semibold">Cliente</legend>

@@ -22,7 +22,7 @@ function posicion(x: number, rect: DOMRect, alto: number) {
 
 export function EventoTooltip({ t, moneda }: { t: TooltipEstado; moneda: string }) {
   const p = t.props;
-  const { top, left } = posicion(t.x, t.rect, p.tipo === "reserva" ? 190 : 110);
+  const { top, left } = posicion(t.x, t.rect, p.tipo === "reserva" ? 210 : 110);
   return (
     <div className="pointer-events-none fixed z-50 rounded-xl border border-line bg-surface p-3 text-sm shadow-xl" style={{ top, left, width: ANCHO }}>
       {p.tipo === "bloqueo" ? (
@@ -47,7 +47,8 @@ export function EventoTooltip({ t, moneda }: { t: TooltipEstado; moneda: string 
             <span className="text-muted">{COBRO[p.cobro]}</span>
             <span className="font-semibold">{dinero(p.pagadoCentavos, moneda)} / {dinero(p.totalCentavos, moneda)}</span>
           </div>
-          {p.vendedor && <p className="mt-1 text-[11px] text-muted">Creada por {p.vendedor}</p>}
+          {p.capitan && <p className="mt-1 text-[11px] text-muted">Capitán: {p.capitan}</p>}
+          {p.vendedor && <p className="text-[11px] text-muted">Creada por {p.vendedor}</p>}
         </>
       )}
     </div>

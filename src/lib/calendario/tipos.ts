@@ -21,6 +21,7 @@ export type PropReserva = {
   horaInicio: string; // HH:MM
   horaFin: string;
   notas: string | null;
+  capitan: string | null;
   /** Reserva sin ningún anticipo: se pinta con rayas */
   sinAnticipo: boolean;
   textoOscuro: boolean;

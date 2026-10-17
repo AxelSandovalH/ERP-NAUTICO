@@ -11,12 +11,20 @@ describe("registro de módulos", () => {
     expect(modulosActivos(["reservas", "calendario"])).toEqual(["nucleo"]);
     expect(modulosActivos(["flota", "calendario"]).sort()).toEqual(["flota", "nucleo"]);
   });
+  it("el plan básico no trae tripulación ni comisiones", () => {
+    const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.BASICO), "ADMIN").map((n) => n.href);
+    expect(hrefs).not.toContain("/tripulacion");
+    expect(hrefs).not.toContain("/comisiones");
+  });
+  it("tripulación y comisiones se apagan si falta reservas", () => {
+    expect(modulosActivos(["flota", "tripulacion", "comisiones"]).sort()).toEqual(["flota", "nucleo"]);
+  });
   it("el plan básico no trae calendario", () => {
     expect(navDe(modulosActivos(MODULOS_POR_PLAN.BASICO)).map((n) => n.href)).not.toContain("/calendario");
   });
   it("el plan pro trae toda la navegación", () => {
     const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.PRO), "ADMIN").map((n) => n.href);
-    expect(hrefs).toEqual(["/dashboard", "/configuracion", "/calendario", "/reservas", "/clientes", "/flota"]);
+    expect(hrefs).toEqual(["/dashboard", "/configuracion", "/calendario", "/reservas", "/clientes", "/tripulacion", "/comisiones", "/flota"]);
   });
   it("configuración solo se muestra al admin", () => {
     const hrefs = navDe(modulosActivos(MODULOS_POR_PLAN.PRO), "VENDEDOR").map((n) => n.href);
@@ -28,6 +36,13 @@ describe("permisos", () => {
   it("solo ADMIN administra usuarios", () => {
     expect(puede("ADMIN", "usuarios:administrar")).toBe(true);
     expect(puede("GERENTE", "usuarios:administrar")).toBe(false);
+  });
+  it("comisiones: el vendedor ve las suyas pero no administra; operaciones asigna tripulación", () => {
+    expect(puede("VENDEDOR", "comisiones:ver_propias")).toBe(true);
+    expect(puede("VENDEDOR", "comisiones:administrar")).toBe(false);
+    expect(puede("OPERACIONES", "comisiones:ver_propias")).toBe(false);
+    expect(puede("OPERACIONES", "tripulacion:asignar")).toBe(true);
+    expect(puede("VENDEDOR", "tripulacion:escribir")).toBe(false);
   });
   it("operaciones no crea reservas; vendedor no edita flota", () => {
     expect(puede("OPERACIONES", "reservas:escribir")).toBe(false);

@@ -7,7 +7,7 @@ import { puede, type Permiso } from "./permisos";
  * finanzas…) se registra aquí, se crea su carpeta en src/app/(app)/<ruta> y
  * se protege con `requireModulo("<id>")`.
  */
-export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario";
+export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones";
 
 export type ModuloDef = {
   id: ModuloId;
@@ -46,6 +46,20 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
       { href: "/clientes", etiqueta: "Clientes" },
     ],
   },
+  tripulacion: {
+    id: "tripulacion",
+    nombre: "Tripulación",
+    descripcion: "Capitanes, marineros y guías, y su asignación a cada reserva.",
+    requiere: ["flota", "reservas"],
+    nav: [{ href: "/tripulacion", etiqueta: "Tripulación" }],
+  },
+  comisiones: {
+    id: "comisiones",
+    nombre: "Comisiones",
+    descripcion: "Tarifas por vendedor, agencia o concierge, abonos y cierre de periodo.",
+    requiere: ["flota", "reservas"],
+    nav: [{ href: "/comisiones", etiqueta: "Comisiones", permiso: "comisiones:ver_propias" }],
+  },
   calendario: {
     id: "calendario",
     nombre: "Calendario",
@@ -55,12 +69,12 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "tripulacion", "comisiones", "flota"];
 
 export const MODULOS_POR_PLAN: Record<Plan, ModuloId[]> = {
-  PRUEBA: ["nucleo", "flota", "reservas", "calendario"],
+  PRUEBA: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones"],
   BASICO: ["nucleo", "flota", "reservas"],
-  PRO: ["nucleo", "flota", "reservas", "calendario"],
+  PRO: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones"],
 };
 
 const IDS = new Set<string>(Object.keys(MODULOS));

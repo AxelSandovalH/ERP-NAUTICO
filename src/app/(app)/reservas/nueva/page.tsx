@@ -9,12 +9,16 @@ export const metadata = { title: "Nueva reserva · ERP Náutico" };
 export default async function NuevaReservaPage({ searchParams }: { searchParams: Promise<{ fecha?: string; embarcacionId?: string; inicio?: string; clienteId?: string }> }) {
   const sp = await searchParams;
   const s = await requireModulo("reservas", "reservas:escribir");
-  const { embarcaciones, clientes } = await withTenant(s.tenantId, async (tx) => ({
+  const conComisiones = s.modulos.includes("comisiones");
+  const { embarcaciones, clientes, beneficiarios } = await withTenant(s.tenantId, async (tx) => ({
     embarcaciones: await tx.embarcacion.findMany({
       where: { estado: "ACTIVA" }, orderBy: { nombre: "asc" },
       include: { tarifas: { where: { activa: true }, orderBy: { duracionMin: "asc" } } },
     }),
     clientes: await tx.cliente.findMany({ orderBy: { nombre: "asc" }, select: { id: true, nombre: true }, take: 1000 }),
+    beneficiarios: conComisiones
+      ? await tx.beneficiario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" }, select: { id: true, nombre: true, tipo: true, usuarioId: true } })
+      : [],
   }));
   return (
     <>
@@ -27,11 +31,14 @@ export default async function NuevaReservaPage({ searchParams }: { searchParams:
               tarifas: e.tarifas.map((t) => ({ id: t.id, nombre: t.nombre, duracionMin: t.duracionMin, precioCentavos: t.precioCentavos })),
             }))}
             clientes={clientes}
+            beneficiarios={conComisiones ? beneficiarios : undefined}
             inicial={{
               fecha: esIso(sp.fecha) ? sp.fecha : hoyIso(s.zonaHoraria),
               embarcacionId: embarcaciones.some((e) => e.id === sp.embarcacionId) ? sp.embarcacionId : undefined,
               inicio: sp.inicio && /^\d{2}:\d{2}$/.test(sp.inicio) ? sp.inicio : undefined,
               clienteId: clientes.some((c) => c.id === sp.clienteId) ? sp.clienteId : undefined,
+              // Por defecto, quien captura la reserva es quien la vendió (si tiene perfil de beneficiario)
+              beneficiarioId: beneficiarios.find((b) => b.usuarioId === s.usuarioId)?.id,
             }}
           />
         </Card>

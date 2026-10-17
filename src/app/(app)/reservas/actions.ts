@@ -7,6 +7,8 @@ import { withTenant } from "@/lib/db/tenant";
 import { esIso, pesosACentavos } from "@/lib/fechas";
 import { horaAMinutos } from "@/lib/reservas/disponibilidad";
 import { ErrorReserva, crearReservaTx, validarDisponibilidad } from "@/lib/reservas/crear";
+import { periodoCerrado, recalcularComisionReserva } from "@/lib/comisiones/servicio";
+import { aIso } from "@/lib/fechas";
 import type { EstadoForm } from "@/components/formulario";
 
 const schema = z.object({
@@ -19,6 +21,7 @@ const schema = z.object({
   origen: z.enum(["DIRECTO", "WEB", "AGENCIA", "CONCIERGE"]),
   total: z.string().optional(),
   notas: z.string().trim().max(2000).optional(),
+  beneficiarioId: z.string().optional(),
   clienteId: z.string().optional(),
   clienteNombre: z.string().trim().max(120).optional(),
   clienteTelefono: z.string().trim().max(40).optional(),
@@ -57,10 +60,17 @@ export async function crearReserva(_: EstadoForm, fd: FormData): Promise<EstadoF
         if (total === null) total = t.precioCentavos;
       }
       if (total === null) throw new ErrorReserva("Indica el total de la reserva.");
+      let beneficiarioId: string | null = null;
+      if (s.modulos.includes("comisiones") && d.beneficiarioId) {
+        const b = await tx.beneficiario.findFirst({ where: { id: d.beneficiarioId, activo: true }, select: { id: true } });
+        if (!b) throw new ErrorReserva("El beneficiario de la comisión no existe o está inactivo.");
+        beneficiarioId = b.id;
+      }
       const r = await crearReservaTx(tx, {
         tenantId: s.tenantId, embarcacionId: d.embarcacionId, clienteId, tarifaId, fecha: d.fecha,
-        inicioMin, finMin, pax: d.pax, origen: d.origen, totalCentavos: total, notas: d.notas, creadorId: s.usuarioId,
+        inicioMin, finMin, pax: d.pax, origen: d.origen, totalCentavos: total, notas: d.notas, creadorId: s.usuarioId, beneficiarioId,
       });
+      if (s.modulos.includes("comisiones")) await recalcularComisionReserva(tx, s.tenantId, r.id, s.moneda);
       return r.id;
     });
   } catch (e) {
@@ -99,6 +109,7 @@ export async function cambiarEstado(reservaId: string, nuevo: "PENDIENTE" | "CON
       }
     }
     await tx.reserva.update({ where: { id: reservaId }, data: { estado: nuevo } });
+    if (s.modulos.includes("comisiones")) await recalcularComisionReserva(tx, s.tenantId, reservaId, s.moneda);
     return null;
   });
   revalidatePath(`/reservas/${reservaId}`);
@@ -161,4 +172,28 @@ export async function guardarCliente(id: string | null, _: EstadoForm, fd: FormD
   const c = await withTenant(s.tenantId, (tx) => tx.cliente.create({ data: { ...data, tenantId: s.tenantId } }));
   revalidatePath("/clientes");
   redirect(`/clientes/${c.id}`);
+}
+
+/** Cambia quién vendió la reserva y recalcula su comisión. Solo quien administra comisiones. */
+export async function cambiarBeneficiario(reservaId: string, _: EstadoForm, fd: FormData): Promise<EstadoForm> {
+  const s = await requireModulo("comisiones", "comisiones:administrar");
+  const id = String(fd.get("beneficiarioId") ?? "");
+  const msg = await withTenant(s.tenantId, async (tx) => {
+    const r = await tx.reserva.findUnique({ where: { id: reservaId } });
+    if (!r) return "Reserva no encontrada.";
+    if (id && !(await tx.beneficiario.findFirst({ where: { id, activo: true }, select: { id: true } }))) return "Beneficiario no válido.";
+    if (await periodoCerrado(tx, aIso(r.fecha).slice(0, 7))) return "El periodo de comisiones de esa fecha está cerrado. Reábrelo para cambiar al beneficiario.";
+    const antes = await tx.comision.findUnique({ where: { reservaId } });
+    if (antes && antes.pagadoCentavos > 0) return "Esta comisión ya tiene pagos aplicados; anula el abono antes de cambiar al beneficiario.";
+    await tx.reserva.update({ where: { id: reservaId }, data: { beneficiarioId: id || null } });
+    // La comisión pertenece a quien vendió (incluso un ajuste manual): al cambiar
+    // de persona se descarta y se calcula desde cero para la nueva
+    if (antes && antes.beneficiarioId !== (id || undefined)) await tx.comision.delete({ where: { id: antes.id } });
+    await recalcularComisionReserva(tx, s.tenantId, reservaId, s.moneda);
+    return null;
+  });
+  if (msg) return { error: msg };
+  revalidatePath(`/reservas/${reservaId}`);
+  revalidatePath("/comisiones");
+  return { ok: "Beneficiario actualizado." };
 }
