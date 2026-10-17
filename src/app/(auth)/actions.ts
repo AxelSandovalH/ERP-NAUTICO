@@ -1,4 +1,5 @@
 "use server";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db/client";
@@ -81,4 +82,53 @@ export async function salir() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
+}
+
+/** Origen real de la petición. Se usa para que el retorno de Google caiga en el
+ *  MISMO dominio donde se guardó la cookie del flujo PKCE (si no, falla). Supabase
+ *  solo respeta redirectTo si está en la lista de Redirect URLs. */
+async function origenActual() {
+  const h = await headers();
+  const host = h.get("x-forwarded-host") ?? h.get("host");
+  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
+  return host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
+}
+
+export async function entrarConGoogle() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: { redirectTo: `${await origenActual()}/auth/callback`, queryParams: { prompt: "select_account" } },
+  });
+  if (error || !data.url) redirect("/login?error=google");
+  redirect(data.url);
+}
+
+const onboardingSchema = z.object({ empresa: z.string().trim().min(2, "Escribe el nombre de tu empresa").max(80) });
+
+/** Alta de empresa para quien entró con Google y aún no tiene cuenta en el ERP. */
+export async function crearEmpresaOnboarding(_: EstadoForm, fd: FormData): Promise<EstadoForm> {
+  const p = onboardingSchema.safeParse(Object.fromEntries(fd));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const au = data.user;
+  if (!au?.email) redirect("/login");
+  if (await prisma.usuario.findUnique({ where: { supabaseId: au.id } })) redirect("/dashboard");
+
+  const meta = au.user_metadata as { full_name?: string; name?: string };
+  const nombre = (meta.full_name ?? meta.name ?? au.email.split("@")[0]).trim().slice(0, 80) || "Administrador";
+  try {
+    await prisma.$transaction(async (tx) => {
+      const tenant = await tx.tenant.create({
+        data: { nombre: p.data.empresa, slug: slugDe(p.data.empresa), plan: "PRUEBA", modulos: MODULOS_POR_PLAN.PRUEBA },
+      });
+      await tx.usuario.create({ data: { tenantId: tenant.id, supabaseId: au.id, email: au.email!.toLowerCase(), nombre, rol: "ADMIN" } });
+    });
+  } catch (e) {
+    if ((e as { code?: string }).code === "P2002")
+      return { error: "Ya existe una cuenta con ese correo. Inicia sesión con tu contraseña." };
+    throw e;
+  }
+  redirect("/dashboard");
 }

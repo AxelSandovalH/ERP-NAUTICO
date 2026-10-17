@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { Card, Campo, Input } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { getSesion } from "@/lib/auth/session";
+import { BotonGoogle } from "@/components/boton-google";
 import { registrar } from "../actions";
 
 export const metadata = { title: "Crear cuenta · ERP Náutico" };
@@ -19,6 +20,7 @@ export default async function RegistroPage() {
         <Campo etiqueta="Correo"><Input name="email" type="email" autoComplete="email" required /></Campo>
         <Campo etiqueta="Contraseña" ayuda="Mínimo 8 caracteres"><Input name="password" type="password" autoComplete="new-password" minLength={8} required /></Campo>
       </Formulario>
+      <BotonGoogle texto="Registrarme con Google" />
       <p className="mt-4 text-center text-sm text-muted">
         ¿Ya tienes cuenta? <Link href="/login" className="font-medium text-brand">Inicia sesión</Link>
       </p>
