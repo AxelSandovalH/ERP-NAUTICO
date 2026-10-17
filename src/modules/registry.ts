@@ -7,7 +7,7 @@ import { puede, type Permiso } from "./permisos";
  * finanzas…) se registra aquí, se crea su carpeta en src/app/(app)/<ruta> y
  * se protege con `requireModulo("<id>")`.
  */
-export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones";
+export type ModuloId = "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones" | "nomina" | "asistencia";
 
 export type ModuloDef = {
   id: ModuloId;
@@ -60,6 +60,20 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
     requiere: ["flota", "reservas"],
     nav: [{ href: "/comisiones", etiqueta: "Comisiones", permiso: "comisiones:ver_propias" }],
   },
+  nomina: {
+    id: "nomina",
+    nombre: "Nómina",
+    descripcion: "Empleados, pagos por periodo, bonos y deducciones.",
+    requiere: [],
+    nav: [{ href: "/nomina", etiqueta: "Nómina", permiso: "nomina:administrar" }],
+  },
+  asistencia: {
+    id: "asistencia",
+    nombre: "Asistencia",
+    descripcion: "Checada por geolocalización y corrección de días; alimenta la nómina.",
+    requiere: ["nomina"],
+    nav: [{ href: "/asistencia", etiqueta: "Asistencia", permiso: "asistencia:checar" }],
+  },
   calendario: {
     id: "calendario",
     nombre: "Calendario",
@@ -69,12 +83,12 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "tripulacion", "comisiones", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
 
 export const MODULOS_POR_PLAN: Record<Plan, ModuloId[]> = {
-  PRUEBA: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones"],
+  PRUEBA: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia"],
   BASICO: ["nucleo", "flota", "reservas"],
-  PRO: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones"],
+  PRO: ["nucleo", "flota", "reservas", "calendario", "tripulacion", "comisiones", "nomina", "asistencia"],
 };
 
 const IDS = new Set<string>(Object.keys(MODULOS));

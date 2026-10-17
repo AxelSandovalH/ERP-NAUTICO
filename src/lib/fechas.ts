@@ -22,7 +22,12 @@ export function sumarDias(iso: string, n: number): string {
 /** Día de hoy en la zona horaria del negocio (no en UTC: en Los Cabos, después
  *  de las 17:00 ya es "mañana" en UTC). */
 export function hoyIso(zona = "America/Mazatlan"): string {
-  return new Intl.DateTimeFormat("en-CA", { timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  return diaLocal(new Date(), zona);
+}
+
+/** Día "YYYY-MM-DD" de un instante, visto en la zona horaria del negocio. */
+export function diaLocal(instante: Date, zona = "America/Mazatlan"): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: zona, year: "numeric", month: "2-digit", day: "2-digit" }).format(instante);
 }
 
 export function mesDe(iso: string): string {
@@ -65,4 +70,9 @@ export function dinero(centavos: number, moneda = "MXN"): string {
 export function pesosACentavos(valor: string): number | null {
   const n = Number(valor.replace(/[, $]/g, ""));
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
+}
+
+/** Hora de un instante en la zona del negocio: "9:05 a. m." */
+export function horaLocal(instante: Date, zona = "America/Mazatlan"): string {
+  return new Intl.DateTimeFormat("es-MX", { timeZone: zona, hour: "numeric", minute: "2-digit", hour12: true }).format(instante);
 }

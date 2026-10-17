@@ -10,6 +10,9 @@ import { Formulario } from "@/components/formulario";
 import { cerrarPeriodoAccion, recalcularPeriodoAccion, reabrirPeriodoAccion } from "./actions";
 import { Campo, Input } from "@/components/ui";
 
+// Desde aquí se lanzan acciones masivas (generar nómina / recalcular comisiones)
+export const maxDuration = 120;
+
 export const metadata = { title: "Comisiones · ERP Náutico" };
 
 export default async function ComisionesPage({ searchParams }: { searchParams: Promise<{ periodo?: string }> }) {

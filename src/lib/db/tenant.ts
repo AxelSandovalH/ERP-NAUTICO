@@ -8,14 +8,16 @@ export type Tx = Prisma.TransactionClient;
  * políticas RLS de Postgres aíslen los datos del tenant aunque se olvide un
  * `where: { tenantId }`. Es la ÚNICA vía para tocar tablas operativas.
  */
-export async function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>): Promise<T> {
+export async function withTenant<T>(tenantId: string, fn: (tx: Tx) => Promise<T>, opciones: { timeoutMs?: number } = {}): Promise<T> {
   if (!tenantId) throw new Error("withTenant requiere tenantId");
   return prisma.$transaction(
     async (tx) => {
       await tx.$executeRaw`SELECT set_config('app.tenant_id', ${tenantId}, true)`;
       return fn(tx);
     },
-    { timeout: 15_000 },
+    // 15 s alcanzan para una pantalla; las operaciones masivas (nómina, recálculo de
+    // comisiones) hacen cientos de consultas y piden más plazo.
+    { timeout: opciones.timeoutMs ?? 15_000 },
   );
 }
 

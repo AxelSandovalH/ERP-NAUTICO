@@ -158,7 +158,7 @@ export async function recalcularPeriodoAccion(periodo: string): Promise<EstadoFo
   const s = await admin();
   if (!periodoOk(periodo)) return { error: "Periodo inválido." };
   return conErrores(async () => {
-    const r = await withTenant(s.tenantId, (tx) => recalcularPeriodo(tx, s.tenantId, periodo, s.moneda));
+    const r = await withTenant(s.tenantId, (tx) => recalcularPeriodo(tx, s.tenantId, periodo, s.moneda), { timeoutMs: 120_000 });
     revalidatePath("/comisiones", "layout");
     return { ok: `Listo: ${r.creada} creadas, ${r.actualizada} actualizadas.` };
   });

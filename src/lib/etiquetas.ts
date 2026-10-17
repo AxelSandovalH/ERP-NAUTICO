@@ -18,3 +18,9 @@ export const ROLES_TRIPULANTE = { CAPITAN: "Capitán", MARINERO: "Marinero", GUI
 export const TIPOS_BENEFICIARIO = { VENDEDOR: "Vendedor", AGENCIA: "Agencia", CONCIERGE: "Concierge", OTRO: "Otro" } as const;
 export const TIPOS_TARIFA = { FIJO: "Monto fijo", PORCENTAJE: "% del total", PORCENTAJE_BALANCE: "% del balance (venta − precio casa)", SIN: "Sin comisión" } as const;
 export const ESTADOS_COMISION = { PENDIENTE: "Pendiente", PAGADA: "Pagada", CANCELADA: "Cancelada" } as const;
+export const ESTADOS_DIA = { TRABAJO: "Trabajó", DESCANSO: "Descanso", VACACIONES: "Vacaciones", INCAPACIDAD: "Incapacidad", PERMISO: "Permiso sin goce", FALTA: "Falta" } as const;
+/** Símbolo corto para la matriz del periodo */
+export const SIMBOLO_DIA = { TRABAJO: "✓", DESCANSO: "D", VACACIONES: "V", INCAPACIDAD: "I", PERMISO: "P", FALTA: "F", SIN_REGISTRO: "·" } as const;
+export const ESQUEMAS_PAGO = { FIJO_PERIODO: "Sueldo fijo por periodo", POR_DIA: "Precio por día trabajado" } as const;
+export const PERIODICIDADES = { SEMANAL: "Semanal", QUINCENAL: "Quincenal", MENSUAL: "Mensual" } as const;
+export const ESTADOS_PAGO_NOMINA = { PENDIENTE: "Pendiente", PAGADO: "Pagado", CANCELADO: "Cancelado" } as const;

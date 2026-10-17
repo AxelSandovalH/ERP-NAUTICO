@@ -35,19 +35,25 @@ model Tenant {
   activo      Boolean  @default(true)
   creadoEn    DateTime @default(now())
 
-  usuarios        Usuario[]
-  embarcaciones   Embarcacion[]
-  tarifas         Tarifa[]
-  bloqueos        BloqueoEmbarcacion[]
-  clientes        Cliente[]
-  reservas        Reserva[]
-  pagos           Pago[]
-  beneficiarios   Beneficiario[]
-  tarifasComision TarifaComision[]
-  comisiones      Comision[]
-  abonosComision  AbonoComision[]
-  cierresComision CierreComision[]
-  tripulantes     Tripulante[]
+  usuarios             Usuario[]
+  embarcaciones        Embarcacion[]
+  tarifas              Tarifa[]
+  bloqueos             BloqueoEmbarcacion[]
+  clientes             Cliente[]
+  reservas             Reserva[]
+  pagos                Pago[]
+  beneficiarios        Beneficiario[]
+  tarifasComision      TarifaComision[]
+  comisiones           Comision[]
+  abonosComision       AbonoComision[]
+  cierresComision      CierreComision[]
+  tripulantes          Tripulante[]
+  empleados            Empleado[]
+  ubicacionAsistencias UbicacionAsistencia[]
+  checadas             Checada[]
+  diaAsistencias       DiaAsistencia[]
+  pagoNominas          PagoNomina[]
+  conceptoNominas      ConceptoNomina[]
 }
 
 model Usuario {
@@ -65,6 +71,7 @@ model Usuario {
   reservasCreadas Reserva[]     @relation("ReservaCreador")
   beneficiario    Beneficiario?
   tripulante      Tripulante?
+  empleado        Empleado?
 
   @@index([tenantId])
 }
@@ -272,6 +279,7 @@ model Tripulante {
 
   embarcaciones TripulanteEmbarcacion[]
   asignaciones  ReservaTripulante[]
+  empleado      Empleado?
 
   @@index([tenantId])
 }
@@ -450,4 +458,176 @@ model CierreComision {
   motivoReapertura String?
 
   @@unique([tenantId, periodo])
+}
+
+// ─── MÓDULOS NÓMINA Y ASISTENCIA ─────────────────────────────────────────────
+
+enum EsquemaPago {
+  FIJO_PERIODO // sueldo fijo por periodo; las faltas se descuentan
+  POR_DIA // precio por día; se paga lo que se trabajó
+}
+
+enum PeriodicidadPago {
+  SEMANAL
+  QUINCENAL
+  MENSUAL
+}
+
+enum TipoChecada {
+  ENTRADA
+  SALIDA
+}
+
+enum EstadoDia {
+  TRABAJO
+  DESCANSO
+  VACACIONES
+  INCAPACIDAD
+  PERMISO // sin goce de sueldo
+  FALTA // injustificada
+}
+
+enum EstadoPagoNomina {
+  PENDIENTE
+  PAGADO
+  CANCELADO
+}
+
+enum TipoConcepto {
+  BONO
+  DEDUCCION
+}
+
+// Persona a la que se le paga nómina. Puede ser un tripulante, un usuario del
+// sistema (administrativo) o ninguno de los dos (limpieza, mantenimiento…).
+model Empleado {
+  id             String           @id @default(cuid())
+  tenantId       String
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre         String
+  apellido       String           @default("")
+  puesto         String?
+  // Con qué usuario entra a checar su asistencia
+  usuarioId      String?          @unique
+  usuario        Usuario?         @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  tripulanteId   String?          @unique
+  tripulante     Tripulante?      @relation(fields: [tripulanteId], references: [id], onDelete: SetNull)
+  esquema        EsquemaPago      @default(FIJO_PERIODO)
+  // FIJO_PERIODO: sueldo de cada periodo · POR_DIA: precio de cada día trabajado
+  sueldoCentavos Int
+  periodicidad   PeriodicidadPago @default(QUINCENAL)
+  activo         Boolean          @default(true)
+  notas          String?
+  creadoEn       DateTime         @default(now())
+
+  checadas Checada[]
+  dias     DiaAsistencia[]
+  pagos    PagoNomina[]
+
+  @@index([tenantId])
+}
+
+// Geocerca: lugar desde el cual se acepta una checada
+model UbicacionAsistencia {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre      String
+  lat         Float
+  lng         Float
+  radioMetros Int      @default(150)
+  activa      Boolean  @default(true)
+  creadoEn    DateTime @default(now())
+
+  checadas Checada[]
+
+  @@index([tenantId])
+}
+
+model Checada {
+  id          String               @id @default(cuid())
+  tenantId    String
+  tenant      Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  empleadoId  String
+  empleado    Empleado             @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  tipo        TipoChecada
+  fecha       DateTime             @default(now())
+  // Día local del negocio (zona horaria de la empresa): evita convertir husos al sumar
+  dia         DateTime             @db.Date
+  ubicacionId String?
+  ubicacion   UbicacionAsistencia? @relation(fields: [ubicacionId], references: [id], onDelete: SetNull)
+  lat         Float?
+  lng         Float?
+  distanciaM  Int?
+  precisionM  Int?
+
+  @@index([tenantId, dia])
+  @@index([empleadoId, dia])
+}
+
+// Corrección manual del día: manda sobre lo que digan las checadas
+model DiaAsistencia {
+  id            String    @id @default(cuid())
+  tenantId      String
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  empleadoId    String
+  empleado      Empleado  @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  fecha         DateTime  @db.Date
+  estado        EstadoDia
+  nota          String?
+  resueltoPorId String?
+  creadoEn      DateTime  @default(now())
+
+  @@unique([empleadoId, fecha])
+  @@index([tenantId, fecha])
+}
+
+model PagoNomina {
+  id                  String           @id @default(cuid())
+  tenantId            String
+  tenant              Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  empleadoId          String
+  empleado            Empleado         @relation(fields: [empleadoId], references: [id])
+  periodoInicio       DateTime         @db.Date
+  periodoFin          DateTime         @db.Date // inclusive
+  // Copia de las condiciones al generar: un cambio de sueldo no altera pagos viejos
+  esquema             EsquemaPago
+  sueldoCentavos      Int
+  diasPeriodo         Int
+  diasTrabajados      Int // trabajo + vacaciones
+  diasFalta           Int // falta + permiso sin goce
+  diasSinRegistro     Int // sin checada ni corrección: conviene revisarlos
+  brutoCentavos       Int
+  bonosCentavos       Int              @default(0)
+  deduccionesCentavos Int              @default(0)
+  netoCentavos        Int
+  estado              EstadoPagoNomina @default(PENDIENTE)
+  metodo              MetodoPago?
+  referencia          String?
+  pagadoEn            DateTime?
+  notas               String?
+  creadoEn            DateTime         @default(now())
+  actualizadoEn       DateTime         @updatedAt
+
+  conceptos ConceptoNomina[]
+
+  @@unique([empleadoId, periodoInicio, periodoFin])
+  @@index([tenantId, periodoInicio])
+}
+
+model ConceptoNomina {
+  id            String       @id @default(cuid())
+  tenantId      String
+  tenant        Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pagoId        String
+  pago          PagoNomina   @relation(fields: [pagoId], references: [id], onDelete: Cascade)
+  tipo          TipoConcepto
+  concepto      String
+  montoCentavos Int
+  // Lo calcula el sistema (p. ej. descuento por faltas) y se rehace al recalcular
+  automatico    Boolean      @default(false)
+  notas         String?
+
+  @@index([pagoId])
+  @@index([tenantId])
 }
