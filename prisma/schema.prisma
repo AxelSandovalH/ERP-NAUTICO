@@ -15,6 +15,14 @@ enum Plan {
   ENTERPRISE
 }
 
+// Estado del cobro de la suscripción (Stripe). NINGUNA = sin suscripción (prueba o plan asignado a mano).
+enum EstadoSuscripcion {
+  NINGUNA
+  ACTIVA
+  PAGO_PENDIENTE // el último cobro falló; Stripe reintenta. Conserva el acceso con aviso.
+  CANCELADA // terminó o no se pudo cobrar: sin acceso a los módulos hasta reactivar
+}
+
 enum RolUsuario {
   ADMIN
   GERENTE
@@ -35,6 +43,13 @@ model Tenant {
   zonaHoraria String   @default("America/Mazatlan")
   activo      Boolean  @default(true)
   creadoEn    DateTime @default(now())
+
+  // Cobro con Stripe: la suscripción manda sobre `plan` mientras exista
+  stripeCustomerId     String?           @unique
+  stripeSubscriptionId String?           @unique
+  estadoSuscripcion    EstadoSuscripcion @default(NINGUNA)
+  suscripcionVenceEn   DateTime? // fin del periodo ya pagado
+  cancelaAlFinal       Boolean           @default(false) // pidió cancelar: sigue hasta que venza
 
   usuarios             Usuario[]
   embarcaciones        Embarcacion[]

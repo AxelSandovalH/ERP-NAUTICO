@@ -175,8 +175,12 @@ export const MODULOS_POR_PLAN = Object.fromEntries(
 /** Un módulo "próximamente" no se activa aunque el plan lo incluya. */
 export const esConstruido = (id: ModuloId) => !MODULOS[id].proximamente;
 
-/** Lo que de verdad ve una empresa: lo que su plan permite ∩ lo que tiene activado, ya con dependencias. */
-export function modulosEfectivos(plan: Plan, guardados: string[]): ModuloId[] {
+/** Lo que de verdad ve una empresa: lo que su plan permite ∩ lo que tiene activado, ya con dependencias,
+ *  y sin nada más que el núcleo si su suscripción terminó. */
+export function modulosEfectivos(plan: Plan, guardados: string[], estadoSuscripcion?: "NINGUNA" | "ACTIVA" | "PAGO_PENDIENTE" | "CANCELADA"): ModuloId[] {
+  // Suscripción terminada o sin poder cobrarse: solo queda el núcleo (panel y configuración) para reactivarla.
+  // PAGO_PENDIENTE conserva todo: Stripe reintenta el cobro y se avisa con un banner.
+  if (estadoSuscripcion === "CANCELADA") return ["nucleo"];
   const permitidos = new Set<string>(MODULOS_POR_PLAN[plan]);
   return modulosActivos(guardados.filter((m) => permitidos.has(m)));
 }

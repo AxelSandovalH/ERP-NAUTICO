@@ -10,10 +10,14 @@ import { Campo, Card, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from 
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { alternarUsuario, crearUsuario, guardarModulos } from "./actions";
+import { abrirPortalAccion, iniciarSuscripcionAccion } from "./suscripcion-actions";
+import { stripeConfigurado } from "@/lib/stripe/cliente";
+import { diaLocal, fechaLarga } from "@/lib/fechas";
 
 export const metadata = { title: "Configuración · ERP Náutico" };
 
-export default async function ConfiguracionPage() {
+export default async function ConfiguracionPage({ searchParams }: { searchParams: Promise<{ pago?: string }> }) {
+  const { pago } = await searchParams;
   const s = await requireSesion();
   if (!puede(s.rol, "usuarios:administrar")) redirect("/dashboard?aviso=sin-permiso");
   const [tenant, usuarios] = await Promise.all([
@@ -21,6 +25,8 @@ export default async function ConfiguracionPage() {
     prisma.usuario.findMany({ where: { tenantId: s.tenantId }, orderBy: { creadoEn: "asc" } }),
   ]);
   const incluidos = MODULOS_POR_PLAN[tenant.plan];
+  const cobro = stripeConfigurado();
+  const suscrita = tenant.estadoSuscripcion === "ACTIVA" || tenant.estadoSuscripcion === "PAGO_PENDIENTE";
   return (
     <>
       <PageHeader titulo="Configuración" sub={`Plan ${PLANES[tenant.plan].nombre}`} />
@@ -28,8 +34,19 @@ export default async function ConfiguracionPage() {
       <section className="mb-8">
         <h2 className="mb-1 font-semibold">Planes</h2>
         <p className="mb-4 text-sm text-muted">
-          {tenant.plan === "PRUEBA" ? "Estás en el periodo de prueba con todos los módulos disponibles." : `Tu plan actual es ${PLANES[tenant.plan].nombre}.`} Para cambiar de plan, contacta a FleetNautic.
+          {tenant.plan === "PRUEBA" ? "Estás en el periodo de prueba con todos los módulos disponibles." : `Tu plan actual es ${PLANES[tenant.plan].nombre}.`}
+          {!cobro && " Para cambiar de plan, contacta a FleetNautic."}
         </p>
+        {pago === "ok" && <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">¡Gracias! Estamos confirmando tu pago; tu plan se activa en unos segundos (recarga la página si aún no lo ves).</p>}
+        {pago === "cancelado" && <p className="mb-4 rounded-lg bg-slate-100 px-3 py-2 text-sm dark:bg-slate-800">No se realizó ningún cobro.</p>}
+        {tenant.estadoSuscripcion === "PAGO_PENDIENTE" && <p role="alert" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">No pudimos cobrar tu último pago. Actualiza tu método de pago para no perder el acceso.</p>}
+        {tenant.estadoSuscripcion === "CANCELADA" && <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-200">Tu suscripción terminó. Tus datos se conservan; elige un plan para recuperar los módulos.</p>}
+        {suscrita && tenant.suscripcionVenceEn && (
+          <p className="mb-4 text-sm text-muted">{tenant.cancelaAlFinal ? `Tu suscripción termina el ${fechaLarga(diaLocal(tenant.suscripcionVenceEn, s.zonaHoraria))}.` : `Se renueva el ${fechaLarga(diaLocal(tenant.suscripcionVenceEn, s.zonaHoraria))}.`}</p>
+        )}
+        {cobro && tenant.stripeCustomerId && (
+          <div className="mb-4"><Formulario accion={abrirPortalAccion} enviar="Administrar suscripción" variante="suave"><span /></Formulario></div>
+        )}
         <div className="grid gap-4 lg:grid-cols-3">
           {PLANES_DE_PAGO.map((id) => {
             const plan = PLANES[id];
@@ -54,6 +71,9 @@ export default async function ConfiguracionPage() {
                     );
                   })}
                 </ul>
+                {cobro && !suscrita && (
+                  <div className="mt-4"><Formulario accion={iniciarSuscripcionAccion.bind(null, id)} enviar={`Suscribirme a ${plan.nombre}`}><span /></Formulario></div>
+                )}
               </Card>
             );
           })}

@@ -16,6 +16,7 @@
     "db:seed:comisiones": "tsx prisma/seed-comisiones.ts",
     "db:seed:nomina": "tsx prisma/seed-nomina.ts",
     "db:storage": "tsx scripts/crear-bucket.ts",
+    "stripe:configurar": "tsx scripts/configurar-stripe.ts",
     "db:seed:finanzas": "tsx prisma/seed-finanzas.ts"
   },
   "dependencies": {
@@ -37,6 +38,7 @@
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "^0.0.1",
+    "stripe": "^23.0.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {

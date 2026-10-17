@@ -16,6 +16,7 @@ export type Sesion = {
   tenantNombre: string;
   moneda: string;
   zonaHoraria: string;
+  estadoSuscripcion: "NINGUNA" | "ACTIVA" | "PAGO_PENDIENTE" | "CANCELADA";
   modulos: ModuloId[];
 };
 
@@ -38,7 +39,8 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
     moneda: u.tenant.moneda,
     zonaHoraria: u.tenant.zonaHoraria,
     // El plan es el tope: bajar de plan quita módulos aunque sigan marcados en la empresa
-    modulos: modulosEfectivos(u.tenant.plan, u.tenant.modulos),
+    modulos: modulosEfectivos(u.tenant.plan, u.tenant.modulos, u.tenant.estadoSuscripcion),
+    estadoSuscripcion: u.tenant.estadoSuscripcion,
   };
 });
 

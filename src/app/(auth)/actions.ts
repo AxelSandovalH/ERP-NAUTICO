@@ -1,10 +1,10 @@
 "use server";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/db/client";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { origenActual } from "@/lib/origen";
 import { MODULOS_POR_PLAN } from "@/modules/registry";
 import type { EstadoForm } from "@/components/formulario";
 
@@ -82,16 +82,6 @@ export async function salir() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   redirect("/login");
-}
-
-/** Origen real de la petición. Se usa para que el retorno de Google caiga en el
- *  MISMO dominio donde se guardó la cookie del flujo PKCE (si no, falla). Supabase
- *  solo respeta redirectTo si está en la lista de Redirect URLs. */
-async function origenActual() {
-  const h = await headers();
-  const host = h.get("x-forwarded-host") ?? h.get("host");
-  const proto = h.get("x-forwarded-proto") ?? (host?.startsWith("localhost") ? "http" : "https");
-  return host ? `${proto}://${host}` : (process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000");
 }
 
 export async function entrarConGoogle() {
