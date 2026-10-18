@@ -14,7 +14,7 @@ export function CamposTraslado({ v = {}, reservaId, reservas, unidades, choferes
       {reservas ? (
         <Campo etiqueta="Reserva"><Select name="reservaId" defaultValue={reservaId ?? ""} required><option value="" disabled>Elige la reserva…</option>{reservas.map((r) => <option key={r.id} value={r.id}>{r.etiqueta}</option>)}</Select></Campo>
       ) : <input type="hidden" name="reservaId" value={reservaId} />}
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Campo etiqueta="Tipo"><Select name="tipo" defaultValue={v.tipo ?? "IDA"}>{Object.entries(TIPOS_TRASLADO).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</Select></Campo>
         <Campo etiqueta="Fecha"><Input type="date" name="fecha" defaultValue={v.fecha} required /></Campo>
         <Campo etiqueta="Hora de recogida"><Input type="time" name="hora" defaultValue={v.hora} required /></Campo>
@@ -24,7 +24,7 @@ export function CamposTraslado({ v = {}, reservaId, reservas, unidades, choferes
         <Campo etiqueta="Recoger en"><Input name="origen" defaultValue={v.origen} placeholder="Hotel Riu, habitación 214" required /></Campo>
         <Campo etiqueta="Llevar a"><Input name="destino" defaultValue={v.destino} placeholder="Marina Cabo San Lucas" required /></Campo>
       </div>
-      <div className="grid gap-3 sm:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Campo etiqueta="Pasajeros"><Input type="number" name="pax" min={1} defaultValue={v.pax ?? 1} required /></Campo>
         <Campo etiqueta="Unidad"><Select name="unidadId" defaultValue={v.unidadId ?? ""}><option value="">Sin asignar</option>{unidades.map((u) => <option key={u.id} value={u.id}>{u.nombre} ({u.capacidad} pax)</option>)}</Select></Campo>
         <Campo etiqueta="Chofer"><Select name="choferId" defaultValue={v.choferId ?? ""}><option value="">Sin asignar</option>{choferes.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</Select></Campo>
