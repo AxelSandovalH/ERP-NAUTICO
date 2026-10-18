@@ -36,12 +36,14 @@ export function variacion(actual: number, anterior: number): number | null {
   return Math.round(((actual - anterior) / Math.abs(anterior)) * 1000) / 10;
 }
 
-/** Máximo "bonito" para el eje: 1, 2, 2.5, 5 × potencia de 10. */
-export function techoDeEje(max: number): number {
-  if (max <= 0) return 100;
+/** Escala del eje Y: un paso «redondo» (1, 2 o 5 × 10ⁿ) y el techo como múltiplo de ese paso, con 5 marcas como máximo. */
+export function escalaDeEje(max: number): { techo: number; paso: number } {
+  if (max <= 0) return { techo: 400, paso: 100 };
   const exp = Math.pow(10, Math.floor(Math.log10(max)));
-  for (const f of [1, 2, 2.5, 5, 10]) if (f * exp >= max) return f * exp;
-  return 10 * exp;
+  for (const paso of [0.2, 0.5, 1, 2, 5, 10].map((f) => f * exp)) {
+    if (Math.ceil(max / paso) <= 5) return { techo: Math.ceil(max / paso) * paso, paso };
+  }
+  return { techo: 10 * exp, paso: 5 * exp };
 }
 
 /** Cifra compacta para ejes y etiquetas: $12.3 mil, $1.2 M. Entra en centavos. */

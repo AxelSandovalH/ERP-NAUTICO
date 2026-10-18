@@ -73,6 +73,12 @@ describe("reporte de ventas", () => {
     expect(beta).toMatchObject({ reservas: 1, ventas: 200_000, gastos: 0, resultado: 200_000 });
     expect(v.porEmbarcacion[0].nombre).toBe("Alfa"); // ordenadas por ventas
   });
+  it("las reservas futuras del mes en curso cuentan en ventas pero no en ingresos", async () => {
+    const hoy = periodoDe("este_mes", "2032-06-10");
+    await reserva(A, "2032-06-25", A.emb1, 700_000); // salida posterior a hoy, dentro del mes
+    const r = await withTenant(A.t, (tx) => reporteDe(tx, hoy, { finanzas: true, reservas: true }));
+    expect(r.ventas).toMatchObject({ reservas: 1, ventas: 700_000 });
+  });
   it("sin reservas el reporte no falla y devuelve ceros", async () => {
     const vacio = await crearTenant("rc");
     const r = await withTenant(vacio.t, (tx) => reporteDe(tx, periodo, { finanzas: true, reservas: true }));

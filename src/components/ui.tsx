@@ -75,7 +75,7 @@ export function Tabla({ children }: { children: ReactNode }) {
     </div>
   );
 }
-export const Th = (p: ComponentProps<"th">) => (
-  <th className="border-b border-line px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted" {...p} />
+export const Th = ({ className, ...p }: ComponentProps<"th">) => (
+  <th className={cx("border-b border-line px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted", className)} {...p} />
 );
-export const Td = (p: ComponentProps<"td">) => <td className="border-b border-line px-4 py-2.5 last:border-b-0" {...p} />;
+export const Td = ({ className, ...p }: ComponentProps<"td">) => <td className={cx("border-b border-line px-4 py-2.5 last:border-b-0", className)} {...p} />;

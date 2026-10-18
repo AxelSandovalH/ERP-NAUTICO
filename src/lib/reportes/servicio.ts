@@ -48,11 +48,12 @@ export async function reporteDe(tx: Tx, periodo: Periodo, modulos: { finanzas: b
   }
 
   if (modulos.reservas) {
+    // Las ventas se miden por la fecha de la salida y cubren el mes completo (con las reservas que aún no pasan), como el panel
     const rs = (await tx.reserva.findMany({
-      where: { estado: { not: "CANCELADA" }, fecha: rango },
+      where: { estado: { not: "CANCELADA" }, fecha: { gte: aDate(periodo.anteriorDesde), lte: aDate(periodo.hastaMes) } },
       select: { fecha: true, totalCentavos: true, origen: true, embarcacionId: true, pagos: { select: { montoCentavos: true } } },
     })).map((r) => ({ ...r, fecha: aIso(r.fecha) }));
-    const actuales = rs.filter((r) => enActual(r.fecha)), previas = rs.filter((r) => enAnterior(r.fecha));
+    const actuales = rs.filter((r) => enActual(r.fecha)), previas = rs.filter((r) => r.fecha >= periodo.anteriorDesde && r.fecha <= periodo.anteriorHastaMes);
     const total = suma(actuales.map((r) => r.totalCentavos));
     const porEmb = new Map<string, FilaEmbarcacion>();
     for (const r of actuales) {

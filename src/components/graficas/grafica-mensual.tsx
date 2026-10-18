@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { compacto, techoDeEje } from "@/lib/reportes/agregar";
+import { compacto, escalaDeEje } from "@/lib/reportes/agregar";
 
 type Serie = { nombre: string; valores: number[]; variable: string };
 
@@ -17,11 +17,11 @@ export function GraficaMensual({ meses, series, moneda, titulo }: { meses: strin
   // El año solo se muestra cuando el periodo cruza de un año a otro
   const variosAnios = new Set(meses.map((m) => m.slice(0, 4))).size > 1;
   const corto = (mes: string) => `${MESES[Number(mes.slice(5)) - 1]}${variosAnios ? ` ${mes.slice(2, 4)}` : ""}`;
-  const techo = techoDeEje(Math.max(...series.flatMap((s) => s.valores), 0));
+  const { techo, paso } = escalaDeEje(Math.max(...series.flatMap((s) => s.valores), 0));
   const pw = W - M.l - M.r, ph = H - M.t - M.b, banda = pw / n;
   const grosor = Math.max(6, Math.min(24, (banda - 14) / k - 2));
   const y = (v: number) => M.t + ph * (1 - v / techo), base = M.t + ph;
-  const ticks = [0, 1, 2, 3, 4].map((i) => (techo / 4) * i);
+  const ticks = Array.from({ length: Math.round(techo / paso) + 1 }, (_, i) => i * paso);
 
   const columna = (x: number, v: number) => {
     const alto = base - y(v);
@@ -80,7 +80,10 @@ export function GraficaMensual({ meses, series, moneda, titulo }: { meses: strin
           </svg>
           {activo !== null && (
             <div role="tooltip" className="pointer-events-none absolute top-2 z-10 min-w-36 rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-lg"
-              style={{ left: `${Math.min(Math.max(((M.l + banda * activo + banda / 2) / W) * 100, 14), 86)}%`, transform: "translateX(-50%)" }}>
+              // Se coloca al lado de la columna (no encima) para no tapar las marcas que se están leyendo
+              style={activo >= n / 2
+                ? { left: `${((M.l + banda * activo) / W) * 100}%`, transform: "translateX(calc(-100% - 8px))" }
+                : { left: `${((M.l + banda * (activo + 1)) / W) * 100}%`, transform: "translateX(8px)" }}>
               <p className="mb-1 text-muted">{corto(meses[activo])}</p>
               {series.map((s) => (
                 <p key={s.nombre} className="flex items-center gap-2">

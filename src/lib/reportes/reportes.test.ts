@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { periodoDe } from "./rangos";
-import { agruparPor, compacto, sumarPorMes, techoDeEje, topConOtras, variacion } from "./agregar";
+import { agruparPor, compacto, escalaDeEje, sumarPorMes, topConOtras, variacion } from "./agregar";
 
 describe("periodoDe", () => {
   it("este mes llega hasta hoy y el anterior es el mes completo previo", () => {
@@ -23,6 +23,10 @@ describe("periodoDe", () => {
     const p = periodoDe("doce_meses", "2026-10-17");
     expect(p.meses[0]).toBe("2025-11");
     expect(p.meses).toHaveLength(12);
+  });
+  it("las ventas miden meses completos aunque el periodo llegue solo hasta hoy", () => {
+    expect(periodoDe("este_mes", "2026-10-17")).toMatchObject({ hasta: "2026-10-17", hastaMes: "2026-10-31", anteriorHastaMes: "2026-09-30" });
+    expect(periodoDe("mes_pasado", "2026-03-10")).toMatchObject({ hasta: "2026-02-28", hastaMes: "2026-02-28" });
   });
   it("el día de corte se ajusta al último día del mes anterior si este es más corto", () => {
     expect(periodoDe("este_mes", "2026-03-31").anteriorHasta).toBe("2026-02-28");
@@ -51,13 +55,18 @@ describe("agregados", () => {
     expect(variacion(10, 0)).toBeNull();
     expect(variacion(-50, -100)).toBe(50); // la pérdida se redujo a la mitad
   });
-  it("techoDeEje", () => {
-    expect(techoDeEje(0)).toBe(100);
-    expect(techoDeEje(730)).toBe(1000);
-    expect(techoDeEje(1900)).toBe(2000);
-    expect(techoDeEje(2300)).toBe(2500);
-    expect(techoDeEje(4100)).toBe(5000);
-    expect(techoDeEje(5000)).toBe(5000);
+  it("escalaDeEje usa pasos redondos y a lo sumo 5 marcas", () => {
+    expect(escalaDeEje(0)).toEqual({ techo: 400, paso: 100 });
+    expect(escalaDeEje(4_650_000)).toEqual({ techo: 5_000_000, paso: 1_000_000 });
+    expect(escalaDeEje(730)).toEqual({ techo: 800, paso: 200 });
+    expect(escalaDeEje(5_000)).toEqual({ techo: 5_000, paso: 1_000 });
+    expect(escalaDeEje(1_900)).toEqual({ techo: 2_000, paso: 500 });
+    for (const m of [1, 37, 999, 12_345, 4_650_000, 987_654_321]) {
+      const { techo, paso } = escalaDeEje(m);
+      expect(techo).toBeGreaterThanOrEqual(m);
+      expect(techo / paso).toBeLessThanOrEqual(5);
+      expect(Number.isInteger(techo / paso)).toBe(true);
+    }
   });
   it("compacto", () => {
     expect(compacto(0)).toBe("$0");

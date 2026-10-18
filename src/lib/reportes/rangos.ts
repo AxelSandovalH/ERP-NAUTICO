@@ -22,6 +22,9 @@ export type Periodo = {
   /** El periodo inmediato anterior, de la misma duración en meses */
   anteriorDesde: string;
   anteriorHasta: string;
+  /** Fin del último mes del periodo (y del anterior) completo: las ventas se miden por salida, y las reservas futuras del mes en curso ya cuentan */
+  hastaMes: string;
+  anteriorHastaMes: string;
   /** Meses que abarca, YYYY-MM, en orden */
   meses: string[];
 };
@@ -55,5 +58,5 @@ export function periodoDe(id: RangoId, hoy: string): Periodo {
     const mesCorte = sumarMeses(actual, -n), dia = Number(hoy.slice(8)), tope = Number(ultimoDia(mesCorte).slice(8));
     anteriorHasta = `${mesCorte}-${String(Math.min(dia, tope)).padStart(2, "0")}`;
   }
-  return { id, etiqueta: RANGOS[id], desde: `${primero}-01`, hasta: finActual, anteriorDesde: `${anteriorPrimero}-01`, anteriorHasta, meses };
+  return { id, etiqueta: RANGOS[id], desde: `${primero}-01`, hasta: finActual, anteriorDesde: `${anteriorPrimero}-01`, anteriorHasta, hastaMes: ultimoDia(ultimo), anteriorHastaMes: ultimoDia(anteriorUltimo), meses };
 }
