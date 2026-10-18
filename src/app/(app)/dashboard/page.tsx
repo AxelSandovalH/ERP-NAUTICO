@@ -5,6 +5,10 @@ import { aDate, dinero, hoyIso, mesDe, sumarMeses } from "@/lib/fechas";
 import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_RESERVA, TONO_RESERVA } from "@/lib/etiquetas";
 import { Card, Insignia, PageHeader, Vacio } from "@/components/ui";
+import { periodoDe } from "@/lib/reportes/rangos";
+import { reporteDe } from "@/lib/reportes/servicio";
+import { variacion } from "@/lib/reportes/agregar";
+import { Tile } from "@/components/graficas/tile";
 
 export const metadata = { title: "Panel · ERP Náutico" };
 
@@ -32,6 +36,9 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         return { hoyRes, proximas, totalMes: delMes._sum.totalCentavos ?? 0, nMes: delMes._count, cobradoMes: pagosMes._sum.montoCentavos ?? 0 };
       })
     : null;
+  // Resumen financiero del mes (solo con el módulo de reportes); se calcula aparte para no encarecer a quien no lo tiene
+  const verReportes = s.modulos.includes("reportes") && (s.modulos.includes("gastos") || s.modulos.includes("ingresos"));
+  const fin = verReportes ? (await withTenant(s.tenantId, (tx) => reporteDe(tx, periodoDe("este_mes", hoy), { finanzas: true, reservas: false }))).finanzas : null;
   return (
     <>
       <PageHeader titulo={`Hola, ${s.nombre.split(" ")[0]}`} sub={s.tenantNombre} />
@@ -44,6 +51,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
             <Card><p className="text-sm text-muted">Ventas del mes ({datos.nMes})</p><p className="mt-1 text-2xl font-semibold">{dinero(datos.totalMes, s.moneda)}</p></Card>
             <Card><p className="text-sm text-muted">Cobrado del mes</p><p className="mt-1 text-2xl font-semibold">{dinero(datos.cobradoMes, s.moneda)}</p></Card>
           </div>
+          {fin && (
+            <div className="mb-6 grid gap-4 sm:grid-cols-3">
+              <Tile etiqueta="Ingresos del mes" valor={dinero(fin.totalIngresos, s.moneda)} variacion={variacion(fin.totalIngresos, fin.previos.ingresos)} />
+              <Tile etiqueta="Gastos del mes" valor={dinero(fin.totalGastos, s.moneda)} variacion={variacion(fin.totalGastos, fin.previos.gastos)} subeEsBueno={false} />
+              <Tile etiqueta="Utilidad del mes" valor={dinero(fin.utilidad, s.moneda)} nota="Ver detalle en Reportes" />
+            </div>
+          )}
           <Card>
             <h2 className="mb-3 font-semibold">Salidas de hoy</h2>
             {datos.hoyRes.length === 0 ? <p className="text-sm text-muted">Sin salidas programadas.</p> : (

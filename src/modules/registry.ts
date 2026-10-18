@@ -114,7 +114,13 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
     requiere: ["cuentas"],
     nav: [{ href: "/conciliacion", etiqueta: "Conciliación", permiso: "conciliacion:administrar" }],
   },
-  reportes: { id: "reportes", nombre: "Gráficas, dashboard y reportes", descripcion: "Indicadores y reportes de toda la operación.", requiere: [], proximamente: true, nav: [] },
+  reportes: {
+    id: "reportes",
+    nombre: "Gráficas, dashboard y reportes",
+    descripcion: "Indicadores, gráficas y reportes de ventas, ingresos, gastos y rentabilidad por embarcación.",
+    requiere: [],
+    nav: [{ href: "/reportes", etiqueta: "Reportes", permiso: "reportes:ver" }],
+  },
   calendario: {
     id: "calendario",
     nombre: "Calendario",
@@ -124,7 +130,7 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
 
 /** Lo que incluye cada plan, en el orden y con los nombres con que se vende. Cada plan incluye todo lo
  *  anterior. Una característica puede cubrir varios módulos (p. ej. el calendario necesita las reservas). */

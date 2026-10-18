@@ -11,6 +11,11 @@
   --brand-soft: #e0f2fe;
   --logo-bote: #0B132B;
   --logo-ola: #00B7BD;
+  /* Gráficas: categorías validadas con scripts/validate_palette.js contra la superficie de la app */
+  --serie-1: #2a78d6;
+  --serie-2: #eb6834;
+  --bueno: #006300;
+  --malo: #d03b3b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,6 +29,10 @@
     --brand-fg: #04121f;
     --brand-soft: #0c2a40;
     --logo-bote: #E2E8F0;
+    --serie-1: #3987e5;
+    --serie-2: #d95926;
+    --bueno: #0ca30c;
+    --malo: #e66767;
   }
 }
 

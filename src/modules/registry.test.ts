@@ -25,7 +25,7 @@ describe("registro de módulos", () => {
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
   it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
-    for (const id of ["horarios", "inventario", "transporte", "facturacion", "reportes"] as ModuloId[]) {
+    for (const id of ["horarios", "inventario", "transporte", "facturacion"] as ModuloId[]) {
       expect(esConstruido(id)).toBe(false);
       expect(modulosActivos(["flota", id])).not.toContain(id);
       expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
@@ -42,6 +42,22 @@ describe("conciliación bancaria", () => {
     expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("conciliacion");
     expect(MODULOS_POR_PLAN.GESTION).not.toContain("conciliacion");
     expect(MODULOS_POR_PLAN.CONTROL).not.toContain("conciliacion");
+  });
+});
+
+describe("reportes", () => {
+  it("es un módulo construido, independiente, y solo trae el plan Enterprise", () => {
+    expect(esConstruido("reportes")).toBe(true);
+    expect(MODULOS.reportes.nav[0].href).toBe("/reportes");
+    expect(modulosActivos(["reservas", "reportes"])).toContain("reportes");
+    expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("reportes");
+    expect(MODULOS_POR_PLAN.GESTION).not.toContain("reportes");
+  });
+  it("solo administradores y gerentes los ven", () => {
+    expect(puede("ADMIN", "reportes:ver")).toBe(true);
+    expect(puede("GERENTE", "reportes:ver")).toBe(true);
+    expect(puede("VENDEDOR", "reportes:ver")).toBe(false);
+    expect(puede("OPERACIONES", "reportes:ver")).toBe(false);
   });
 });
 
