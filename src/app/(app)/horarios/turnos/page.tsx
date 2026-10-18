@@ -13,7 +13,7 @@ const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:
 
 function CamposTurno({ v }: { v?: { nombre: string; inicioMin: number; finMin: number; color: string } }) {
   return (
-    <div className="grid gap-3 sm:grid-cols-4">
+    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
       <Campo etiqueta="Nombre"><Input name="nombre" defaultValue={v?.nombre} placeholder="Mañana" required /></Campo>
       <Campo etiqueta="Entrada"><Input type="time" name="entrada" defaultValue={v ? hhmm(v.inicioMin) : "08:00"} required /></Campo>
       <Campo etiqueta="Salida" ayuda="Si es menor que la entrada, cruza la medianoche"><Input type="time" name="salida" defaultValue={v ? hhmm(v.finMin) : "16:00"} required /></Campo>
@@ -60,10 +60,8 @@ export default async function TurnosPage() {
           <Formulario accion={guardarPlantillaAccion.bind(null, null)} enviar="Crear turno">
             <div className="space-y-3">
               <Campo etiqueta="Nombre"><Input name="nombre" placeholder="Mañana" required /></Campo>
-              <div className="grid grid-cols-2 gap-3">
-                <Campo etiqueta="Entrada"><Input type="time" name="entrada" defaultValue="08:00" required /></Campo>
-                <Campo etiqueta="Salida" ayuda="Menor que la entrada = cruza la medianoche"><Input type="time" name="salida" defaultValue="16:00" required /></Campo>
-              </div>
+              <Campo etiqueta="Entrada"><Input type="time" name="entrada" defaultValue="08:00" required /></Campo>
+              <Campo etiqueta="Salida" ayuda="Menor que la entrada = cruza la medianoche"><Input type="time" name="salida" defaultValue="16:00" required /></Campo>
               <Campo etiqueta="Color"><Input type="color" name="color" defaultValue="#0ea5e9" className="h-10 p-1" /></Campo>
             </div>
           </Formulario>

@@ -25,7 +25,7 @@ export function CeldaTurno({ accion, valor, opciones, color, nombre }: {
           if (r && typeof r === "object" && "error" in r && r.error) { setActual(previo); window.alert(String(r.error)); }
         });
       }}
-      className="w-full min-w-28 rounded-md border border-line bg-surface px-1.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-brand disabled:opacity-60"
+      className="w-full min-w-36 rounded-md border border-line bg-surface px-1.5 py-1.5 text-xs outline-none focus:ring-2 focus:ring-brand disabled:opacity-60"
       style={color ? { borderLeft: `4px solid ${color}` } : undefined}
     >
       {opciones.map((o) => <option key={o.valor} value={o.valor}>{o.etiqueta}</option>)}

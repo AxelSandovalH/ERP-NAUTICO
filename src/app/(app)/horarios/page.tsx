@@ -59,7 +59,7 @@ export default async function HorariosPage({ searchParams }: { searchParams: Pro
         <>
           {plantillas.length === 0 && <p className="mb-3 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">Crea tus turnos tipo (Mañana, Tarde…) en <Link href="/horarios/turnos" className="font-medium underline">Turnos</Link> para poder asignarlos. Mientras tanto solo puedes marcar descansos y ausencias.</p>}
           <div className="overflow-x-auto rounded-xl border border-line bg-surface">
-            <table className="w-full min-w-[56rem] text-left text-sm">
+            <table className="w-full min-w-[72rem] text-left text-sm">
               <thead>
                 <tr>
                   <th className="sticky left-0 border-b border-line bg-surface px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-muted">Persona</th>

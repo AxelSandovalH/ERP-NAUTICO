@@ -77,7 +77,7 @@ export function ShellApp({ nav, tenantNombre, usuarioNombre, salir, children }: 
           </button>
         </form>
       </aside>
-      <main className={compacto ? "w-full min-w-0 px-2 py-2 md:px-3 md:py-3" : "mx-auto w-full max-w-6xl px-4 py-6 md:px-8"}>{children}</main>
+      <main className={compacto ? "w-full min-w-0 px-2 py-2 md:px-3 md:py-3" : "mx-auto w-full min-w-0 max-w-6xl px-4 py-6 md:px-8"}>{children}</main>
     </div>
   );
 }
