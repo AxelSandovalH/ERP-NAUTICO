@@ -14,7 +14,11 @@ export function BotonAccion({
       disabled={pendiente}
       onClick={() => {
         if (confirmar && !window.confirm(confirmar)) return;
-        iniciar(async () => { await accion(); });
+        iniciar(async () => {
+          const r = await accion();
+          // Las acciones que pueden fallar devuelven { error } para que la persona sepa por qué no pasó nada
+          if (r && typeof r === "object" && "error" in r && r.error) window.alert(String(r.error));
+        });
       }}
     >
       {pendiente ? "…" : etiqueta}

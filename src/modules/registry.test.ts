@@ -25,11 +25,23 @@ describe("registro de módulos", () => {
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
   it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
-    for (const id of ["horarios", "inventario", "transporte", "facturacion", "conciliacion", "reportes"] as ModuloId[]) {
+    for (const id of ["horarios", "inventario", "transporte", "facturacion", "reportes"] as ModuloId[]) {
       expect(esConstruido(id)).toBe(false);
       expect(modulosActivos(["flota", id])).not.toContain(id);
       expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
     }
+  });
+});
+
+describe("conciliación bancaria", () => {
+  it("es un módulo construido que necesita cuentas y solo trae el plan Enterprise", () => {
+    expect(esConstruido("conciliacion")).toBe(true);
+    expect(MODULOS.conciliacion.nav[0].href).toBe("/conciliacion");
+    expect(modulosActivos(["conciliacion"])).not.toContain("conciliacion"); // sin cuentas no se activa
+    expect(modulosActivos(["gastos", "conciliacion"])).toEqual(expect.arrayContaining(["cuentas", "conciliacion"]));
+    expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("conciliacion");
+    expect(MODULOS_POR_PLAN.GESTION).not.toContain("conciliacion");
+    expect(MODULOS_POR_PLAN.CONTROL).not.toContain("conciliacion");
   });
 });
 

@@ -43,6 +43,12 @@ async function cuentaActiva(tx: Tx, cuentaId: string) {
   return c;
 }
 
+/** Un movimiento ya conciliado con el banco no se cancela: primero hay que desconciliarlo. */
+async function exigirNoConciliado(tx: Tx, donde: { gastoId: string } | { ingresoId: string } | { traspasoId: string }) {
+  if (await tx.movimientoBanco.findFirst({ where: { ...donde, estado: "CONCILIADA" }, select: { id: true } }))
+    throw new ErrorFinanzas("Este movimiento ya está conciliado con el banco. Desconcílialo primero en Conciliación bancaria.");
+}
+
 const validarMonto = (m: number) => { if (!Number.isInteger(m) || m <= 0) throw new ErrorFinanzas("El monto debe ser mayor a cero."); };
 const validarFecha = (f: string) => { if (!esIso(f)) throw new ErrorFinanzas("Fecha inválida."); };
 
@@ -78,6 +84,7 @@ export async function cancelarGasto(tx: Tx, id: string, usuarioId: string, motiv
   if (g.estado === "CANCELADO") throw new ErrorFinanzas("El gasto ya está cancelado.");
   if (g.origen !== "MANUAL") throw new ErrorFinanzas(g.origen === "NOMINA" ? "Este gasto lo generó un pago de nómina: cancela el pago de nómina." : "Este gasto lo generó un abono de comisiones: anula el abono.");
   if (motivo.trim().length < 3) throw new ErrorFinanzas("Indica el motivo de la cancelación.");
+  await exigirNoConciliado(tx, { gastoId: id });
   return tx.gasto.update({ where: { id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: motivo.trim() } });
 }
 
@@ -107,6 +114,7 @@ export async function cancelarIngreso(tx: Tx, id: string, usuarioId: string, mot
   if (i.estado === "CANCELADO") throw new ErrorFinanzas("El ingreso ya está cancelado.");
   if (i.origen === "PAGO_RESERVA") throw new ErrorFinanzas("Este ingreso lo generó el pago de una reserva: elimina el pago en la reserva.");
   if (motivo.trim().length < 3) throw new ErrorFinanzas("Indica el motivo de la cancelación.");
+  await exigirNoConciliado(tx, { ingresoId: id });
   return tx.ingreso.update({ where: { id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: motivo.trim() } });
 }
 
@@ -146,6 +154,7 @@ export async function cancelarTraspaso(tx: Tx, id: string) {
   const t = await tx.traspaso.findUnique({ where: { id } });
   if (!t) throw new ErrorFinanzas("El traspaso no existe.");
   if (t.estado === "CANCELADO") throw new ErrorFinanzas("El traspaso ya está cancelado.");
+  await exigirNoConciliado(tx, { traspasoId: id });
   return tx.traspaso.update({ where: { id }, data: { estado: "CANCELADO" } });
 }
 
@@ -225,8 +234,10 @@ export async function ingresoDesdePago(tx: Tx, tenantId: string, pagoId: string,
 /** Al eliminar un pago de reserva, su ingreso queda cancelado (no se borra el rastro). */
 export async function cancelarIngresoDePago(tx: Tx, pagoId: string, usuarioId?: string) {
   const i = await tx.ingreso.findUnique({ where: { pagoId } });
-  if (i && i.estado === "ACTIVO")
+  if (i && i.estado === "ACTIVO") {
+    await exigirNoConciliado(tx, { ingresoId: i.id });
     await tx.ingreso.update({ where: { id: i.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Pago de la reserva eliminado" } });
+  }
 }
 
 /** Un pago de nómina PAGADO genera su gasto. Si se cancela y se vuelve a pagar, se reactiva el mismo. */
@@ -250,8 +261,10 @@ export async function gastoDesdeNomina(tx: Tx, tenantId: string, pagoNominaId: s
 
 export async function cancelarGastoDeNomina(tx: Tx, pagoNominaId: string, usuarioId?: string) {
   const g = await tx.gasto.findUnique({ where: { pagoNominaId } });
-  if (g && g.estado === "ACTIVO")
+  if (g && g.estado === "ACTIVO") {
+    await exigirNoConciliado(tx, { gastoId: g.id });
     await tx.gasto.update({ where: { id: g.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Pago de nómina cancelado" } });
+  }
 }
 
 /** Un abono de comisiones genera su gasto. */
@@ -271,8 +284,10 @@ export async function gastoDesdeAbono(tx: Tx, tenantId: string, abonoId: string,
 
 export async function cancelarGastoDeAbono(tx: Tx, abonoId: string, usuarioId?: string) {
   const g = await tx.gasto.findUnique({ where: { abonoComisionId: abonoId } });
-  if (g && g.estado === "ACTIVO")
+  if (g && g.estado === "ACTIVO") {
+    await exigirNoConciliado(tx, { gastoId: g.id });
     await tx.gasto.update({ where: { id: g.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Abono de comisiones anulado" } });
+  }
 }
 
 /** Genera los ingresos de los pagos de reserva que aún no tienen uno (p. ej. los anteriores a activar el módulo). */

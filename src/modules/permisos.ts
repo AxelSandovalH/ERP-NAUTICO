@@ -16,11 +16,12 @@ export type Permiso =
   | "ingresos:ver"
   | "ingresos:administrar"
   | "cuentas:administrar"
+  | "conciliacion:administrar"
   | "usuarios:administrar";
 
 const MATRIZ: Record<RolUsuario, Permiso[]> = {
-  ADMIN: ["flota:escribir", "reservas:escribir", "reservas:cobrar", "tripulacion:escribir", "tripulacion:asignar", "comisiones:ver_propias", "comisiones:administrar", "nomina:administrar", "asistencia:checar", "asistencia:administrar", "gastos:registrar", "gastos:administrar", "ingresos:ver", "ingresos:administrar", "cuentas:administrar", "usuarios:administrar"],
-  GERENTE: ["flota:escribir", "reservas:escribir", "reservas:cobrar", "tripulacion:escribir", "tripulacion:asignar", "comisiones:ver_propias", "comisiones:administrar", "nomina:administrar", "asistencia:checar", "asistencia:administrar", "gastos:registrar", "gastos:administrar", "ingresos:ver", "ingresos:administrar", "cuentas:administrar"],
+  ADMIN: ["flota:escribir", "reservas:escribir", "reservas:cobrar", "tripulacion:escribir", "tripulacion:asignar", "comisiones:ver_propias", "comisiones:administrar", "nomina:administrar", "asistencia:checar", "asistencia:administrar", "gastos:registrar", "gastos:administrar", "ingresos:ver", "ingresos:administrar", "cuentas:administrar", "conciliacion:administrar", "usuarios:administrar"],
+  GERENTE: ["flota:escribir", "reservas:escribir", "reservas:cobrar", "tripulacion:escribir", "tripulacion:asignar", "comisiones:ver_propias", "comisiones:administrar", "nomina:administrar", "asistencia:checar", "asistencia:administrar", "gastos:registrar", "gastos:administrar", "ingresos:ver", "ingresos:administrar", "cuentas:administrar", "conciliacion:administrar"],
   VENDEDOR: ["reservas:escribir", "reservas:cobrar", "comisiones:ver_propias", "asistencia:checar"],
   OPERACIONES: ["flota:escribir", "tripulacion:escribir", "tripulacion:asignar", "asistencia:checar", "asistencia:administrar", "gastos:registrar"],
 };

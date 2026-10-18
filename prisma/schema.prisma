@@ -78,6 +78,9 @@ model Tenant {
   ajusteCuentas        AjusteCuenta[]
   arqueoCuentas        ArqueoCuenta[]
   comprobantes         Comprobante[]
+  importacionesBanco   ImportacionBanco[]
+  movimientosBanco     MovimientoBanco[]
+  cierresConciliacion  CierreConciliacion[]
 }
 
 model Usuario {
@@ -716,6 +719,13 @@ model Cuenta {
   ajustes          AjusteCuenta[]
   arqueos          ArqueoCuenta[]
 
+  // Conciliación bancaria: cómo leer el archivo de este banco (se recuerda por cuenta)
+  mapeoBanco       Json?
+  movimientosBanco MovimientoBanco[]
+
+  importacionesBanco  ImportacionBanco[]
+  cierresConciliacion CierreConciliacion[]
+
   @@unique([tenantId, nombre])
   @@index([tenantId])
 }
@@ -778,6 +788,7 @@ model Gasto {
   creadoEn          DateTime         @default(now())
 
   comprobantes Comprobante[]
+  lineaBanco   MovimientoBanco?
 
   @@index([tenantId, fecha])
   @@index([cuentaId])
@@ -815,6 +826,7 @@ model Ingreso {
   canceladoEn       DateTime?
   motivoCancelacion String?
   creadoEn          DateTime         @default(now())
+  lineaBanco        MovimientoBanco?
 
   @@index([tenantId, fecha])
   @@index([cuentaId])
@@ -822,21 +834,22 @@ model Ingreso {
 
 // Mover dinero entre cuentas propias: no es gasto ni ingreso.
 model Traspaso {
-  id                   String           @id @default(cuid())
+  id                   String            @id @default(cuid())
   tenantId             String
-  tenant               Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant               Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   origenId             String
-  origen               Cuenta           @relation("TraspasoOrigen", fields: [origenId], references: [id])
+  origen               Cuenta            @relation("TraspasoOrigen", fields: [origenId], references: [id])
   destinoId            String
-  destino              Cuenta           @relation("TraspasoDestino", fields: [destinoId], references: [id])
+  destino              Cuenta            @relation("TraspasoDestino", fields: [destinoId], references: [id])
   montoOrigenCentavos  Int // en la moneda de la cuenta de origen
   montoDestinoCentavos Int // en la moneda de la cuenta destino (distinto si cambia la moneda)
   tipoCambio           Float?
-  fecha                DateTime         @db.Date
+  fecha                DateTime          @db.Date
   notas                String?
-  estado               EstadoMovimiento @default(ACTIVO)
+  estado               EstadoMovimiento  @default(ACTIVO)
   registradoPorId      String?
-  creadoEn             DateTime         @default(now())
+  creadoEn             DateTime          @default(now())
+  lineasBanco          MovimientoBanco[]
 
   @@index([tenantId, fecha])
   @@index([origenId])
@@ -906,4 +919,84 @@ model ConfigFinanzas {
   cuentaEfectivoId      String?
   cuentaTarjetaId       String?
   cuentaTransferenciaId String?
+}
+
+// ─── Conciliación bancaria ───────────────────────────────────────────────────
+
+enum EstadoLinea {
+  PENDIENTE
+  CONCILIADA
+  IGNORADA
+}
+
+// Cada archivo de estado de cuenta que se sube
+model ImportacionBanco {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentaId       String
+  cuenta         Cuenta   @relation(fields: [cuentaId], references: [id])
+  archivo        String
+  filas          Int
+  nuevas         Int
+  duplicadas     Int
+  fueraDePeriodo Int      @default(0)
+  creadoPorId    String?
+  creadoEn       DateTime @default(now())
+
+  lineas MovimientoBanco[]
+
+  @@index([tenantId, cuentaId])
+}
+
+// Un renglón del estado de cuenta. Monto con signo en la moneda de la cuenta: − sale, + entra.
+model MovimientoBanco {
+  id              String            @id @default(cuid())
+  tenantId        String
+  tenant          Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentaId        String
+  cuenta          Cuenta            @relation(fields: [cuentaId], references: [id])
+  fecha           DateTime          @db.Date
+  descripcion     String
+  montoCentavos   Int
+  saldoCentavos   Int?
+  referencia      String?
+  // Identifica el renglón para que subir dos veces el mismo archivo no lo duplique
+  huella          String
+  estado          EstadoLinea       @default(PENDIENTE)
+  // Con qué movimiento del sistema quedó conciliado (uno solo de los tres)
+  gastoId         String?           @unique
+  gasto           Gasto?            @relation(fields: [gastoId], references: [id], onDelete: SetNull)
+  ingresoId       String?           @unique
+  ingreso         Ingreso?          @relation(fields: [ingresoId], references: [id], onDelete: SetNull)
+  traspasoId      String?
+  traspaso        Traspaso?         @relation(fields: [traspasoId], references: [id], onDelete: SetNull)
+  conciliadoPorId String?
+  conciliadoEn    DateTime?
+  importacionId   String?
+  importacion     ImportacionBanco? @relation(fields: [importacionId], references: [id], onDelete: SetNull)
+  creadoEn        DateTime          @default(now())
+
+  @@unique([cuentaId, huella])
+  @@unique([traspasoId, cuentaId])
+  @@index([tenantId, cuentaId, estado, fecha])
+}
+
+// Un mes conciliado de una cuenta. Mientras exista, sus renglones del banco ya no se tocan.
+model CierreConciliacion {
+  id                   String   @id @default(cuid())
+  tenantId             String
+  tenant               Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  cuentaId             String
+  cuenta               Cuenta   @relation(fields: [cuentaId], references: [id])
+  mes                  String // YYYY-MM
+  saldoBancoCentavos   Int
+  saldoSistemaCentavos Int
+  sinExplicarCentavos  Int
+  notas                String?
+  cerradoPorId         String?
+  cerradoEn            DateTime @default(now())
+
+  @@unique([cuentaId, mes])
+  @@index([tenantId])
 }
