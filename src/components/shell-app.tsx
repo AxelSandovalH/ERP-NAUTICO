@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Banknote, Boxes, CalendarClock, CalendarDays, Landmark, Receipt, TrendingUp, Wallet, ClipboardList, Clock, LayoutDashboard, LogOut, Percent, Settings, Ship, Users, UsersRound, type LucideIcon } from "lucide-react";
+import { BarChart3, Banknote, Bus, Boxes, CalendarClock, CalendarDays, Landmark, Receipt, TrendingUp, Wallet, ClipboardList, Clock, LayoutDashboard, LogOut, Percent, Settings, Ship, Users, UsersRound, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Logo, LogoMarca } from "./logo";
 
@@ -22,6 +22,8 @@ const ICONOS: Record<string, LucideIcon> = {
   "/ingresos": TrendingUp,
   "/conciliacion": Landmark,
   "/reportes": BarChart3,
+  "/transporte": Bus,
+  "/transporte/mios": Bus,
   "/inventario": Boxes,
   "/horarios": CalendarClock,
   "/horarios/mio": CalendarClock,

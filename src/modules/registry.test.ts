@@ -25,7 +25,7 @@ describe("registro de módulos", () => {
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
   it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
-    for (const id of ["transporte", "facturacion"] as ModuloId[]) {
+    for (const id of ["facturacion"] as ModuloId[]) {
       expect(esConstruido(id)).toBe(false);
       expect(modulosActivos(["flota", id])).not.toContain(id);
       expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
@@ -42,6 +42,24 @@ describe("conciliación bancaria", () => {
     expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("conciliacion");
     expect(MODULOS_POR_PLAN.GESTION).not.toContain("conciliacion");
     expect(MODULOS_POR_PLAN.CONTROL).not.toContain("conciliacion");
+  });
+});
+
+describe("transporte", () => {
+  it("es un módulo construido que necesita reservas y viene desde el plan Gestión", () => {
+    expect(esConstruido("transporte")).toBe(true);
+    expect(modulosActivos(["transporte"])).not.toContain("transporte"); // sin reservas no se activa
+    expect(modulosActivos(["flota", "reservas", "transporte"])).toContain("transporte");
+    expect(MODULOS_POR_PLAN.CONTROL).not.toContain("transporte");
+    expect(MODULOS_POR_PLAN.GESTION).toContain("transporte");
+  });
+  it("permisos: todos ven sus traslados; operaciones gestiona; solo administradores y gerentes cobran", () => {
+    for (const rol of ["ADMIN", "GERENTE", "VENDEDOR", "OPERACIONES"] as const) expect(puede(rol, "transporte:ver_propio")).toBe(true);
+    expect(puede("OPERACIONES", "transporte:gestionar")).toBe(true);
+    expect(puede("OPERACIONES", "transporte:finanzas")).toBe(false);
+    expect(puede("VENDEDOR", "transporte:ver")).toBe(true);
+    expect(puede("VENDEDOR", "transporte:gestionar")).toBe(false);
+    expect(puede("GERENTE", "transporte:finanzas")).toBe(true);
   });
 });
 

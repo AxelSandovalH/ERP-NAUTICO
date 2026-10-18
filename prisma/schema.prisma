@@ -89,6 +89,9 @@ model Tenant {
   ubicaciones           Ubicacion[]
   articulos             Articulo[]
   movimientosInventario MovimientoInventario[]
+
+  unidadesTransporte UnidadTransporte[]
+  traslados          Traslado[]
 }
 
 model Usuario {
@@ -264,6 +267,8 @@ model Reserva {
   tripulantes ReservaTripulante[]
   gastos      Gasto[]
   ingresos    Ingreso[]
+
+  traslados Traslado[]
 
   @@unique([tenantId, folio])
   @@index([tenantId, fecha])
@@ -569,6 +574,8 @@ model Empleado {
 
   turnos TurnoEmpleado[]
 
+  traslados Traslado[]
+
   @@index([tenantId])
 }
 
@@ -709,6 +716,7 @@ enum OrigenMovimiento {
   NOMINA
   COMISION
   INVENTARIO
+  TRANSPORTE
 }
 
 // Donde está el dinero: caja de efectivo, cuenta de banco, tarjeta, pasarela de pago.
@@ -805,6 +813,9 @@ model Gasto {
 
   movimientoInventario MovimientoInventario?
 
+  trasladoId String?
+  traslado   Traslado? @relation(fields: [trasladoId], references: [id], onDelete: SetNull)
+
   @@index([tenantId, fecha])
   @@index([cuentaId])
   @@index([embarcacionId])
@@ -842,6 +853,8 @@ model Ingreso {
   motivoCancelacion String?
   creadoEn          DateTime         @default(now())
   lineaBanco        MovimientoBanco?
+
+  traslado Traslado?
 
   @@index([tenantId, fecha])
   @@index([cuentaId])
@@ -1161,4 +1174,72 @@ model MovimientoInventario {
   @@index([tenantId, articuloId, ubicacionId])
   @@index([tenantId, fecha])
   @@index([grupoId])
+}
+
+// ─── Transporte ──────────────────────────────────────────────────────────────
+
+enum TipoTraslado {
+  IDA // hacia la marina
+  REGRESO // de regreso al hotel o domicilio
+}
+
+enum EstadoTraslado {
+  PROGRAMADO
+  COMPLETADO
+  CANCELADO
+}
+
+model UnidadTransporte {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre    String
+  placas    String?
+  capacidad Int
+  activa    Boolean  @default(true)
+  notas     String?
+  creadoEn  DateTime @default(now())
+
+  traslados Traslado[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+// Un traslado de clientes de una reserva (hotel ↔ marina)
+model Traslado {
+  id             String            @id @default(cuid())
+  tenantId       String
+  tenant         Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaId      String
+  reserva        Reserva           @relation(fields: [reservaId], references: [id], onDelete: Cascade)
+  tipo           TipoTraslado
+  fecha          DateTime          @db.Date
+  horaMin        Int // hora de recogida, minutos desde medianoche
+  duracionMin    Int               @default(60)
+  origen         String
+  destino        String
+  pax            Int
+  unidadId       String?
+  unidad         UnidadTransporte? @relation(fields: [unidadId], references: [id], onDelete: SetNull)
+  // El chofer es una persona del equipo (el mismo catálogo de Horarios, Asistencia y Nómina)
+  choferId       String?
+  chofer         Empleado?         @relation(fields: [choferId], references: [id], onDelete: SetNull)
+  // Se cobra aparte de la reserva: no cambia el total de la reserva ni sus comisiones
+  precioCentavos Int               @default(0)
+  estado         EstadoTraslado    @default(PROGRAMADO)
+  notas          String?
+  // El ingreso que se creó al registrar el cobro
+  ingresoId      String?           @unique
+  ingreso        Ingreso?          @relation(fields: [ingresoId], references: [id], onDelete: SetNull)
+  creadoPorId    String?
+  creadoEn       DateTime          @default(now())
+  actualizadoEn  DateTime          @updatedAt
+
+  gastos Gasto[]
+
+  @@index([tenantId, fecha])
+  @@index([unidadId, fecha])
+  @@index([choferId, fecha])
+  @@index([reservaId])
 }

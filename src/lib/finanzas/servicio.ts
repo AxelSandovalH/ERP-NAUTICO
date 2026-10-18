@@ -56,7 +56,7 @@ const validarFecha = (f: string) => { if (!esIso(f)) throw new ErrorFinanzas("Fe
 
 export type EntradaGasto = {
   concepto: string; cuentaId: string; fecha: string; montoCentavos: number; tipoCambio?: number | null;
-  categoriaId?: string | null; embarcacionId?: string | null; reservaId?: string | null; proveedor?: string; notas?: string;
+  categoriaId?: string | null; embarcacionId?: string | null; reservaId?: string | null; trasladoId?: string | null; proveedor?: string; notas?: string;
   requiereFactura?: boolean; usuarioId?: string;
 };
 
@@ -67,12 +67,13 @@ export async function registrarGasto(tx: Tx, tenantId: string, e: EntradaGasto) 
   if (e.categoriaId && !(await tx.categoria.findFirst({ where: { id: e.categoriaId, tipo: "GASTO", activa: true } }))) throw new ErrorFinanzas("La categoría no existe o está inactiva.");
   if (e.embarcacionId && !(await tx.embarcacion.findUnique({ where: { id: e.embarcacionId }, select: { id: true } }))) throw new ErrorFinanzas("La embarcación no existe.");
   if (e.reservaId && !(await tx.reserva.findUnique({ where: { id: e.reservaId }, select: { id: true } }))) throw new ErrorFinanzas("La reserva no existe.");
+  if (e.trasladoId && !(await tx.traslado.findUnique({ where: { id: e.trasladoId }, select: { id: true } }))) throw new ErrorFinanzas("El traslado no existe.");
   const { base, cfg } = await contexto(tx, tenantId);
   const m = armarMovimiento(cuenta.moneda, base, cfg.tipoCambio, { montoCentavos: e.montoCentavos, tipoCambio: e.tipoCambio });
   return tx.gasto.create({
     data: {
       tenantId, concepto: e.concepto.trim(), cuentaId: cuenta.id, ...m, fecha: aDate(e.fecha), categoriaId: e.categoriaId || null,
-      embarcacionId: e.embarcacionId || null, reservaId: e.reservaId || null, proveedor: e.proveedor?.trim() || null, notas: e.notas?.trim() || null,
+      embarcacionId: e.embarcacionId || null, reservaId: e.reservaId || null, trasladoId: e.trasladoId || null, proveedor: e.proveedor?.trim() || null, notas: e.notas?.trim() || null,
       requiereFactura: e.requiereFactura ?? false, registradoPorId: e.usuarioId,
     },
   });
@@ -116,6 +117,7 @@ export async function cancelarIngreso(tx: Tx, id: string, usuarioId: string, mot
   if (!i) throw new ErrorFinanzas("El ingreso no existe.");
   if (i.estado === "CANCELADO") throw new ErrorFinanzas("El ingreso ya está cancelado.");
   if (i.origen === "PAGO_RESERVA") throw new ErrorFinanzas("Este ingreso lo generó el pago de una reserva: elimina el pago en la reserva.");
+  if (i.origen === "TRANSPORTE") throw new ErrorFinanzas("Este ingreso lo generó el cobro de un traslado: anula el cobro en Transporte.");
   if (motivo.trim().length < 3) throw new ErrorFinanzas("Indica el motivo de la cancelación.");
   await exigirNoConciliado(tx, { ingresoId: id });
   return tx.ingreso.update({ where: { id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: motivo.trim() } });
@@ -276,6 +278,15 @@ export async function cancelarGastoDeInventario(tx: Tx, gastoId: string, usuario
   if (g && g.estado === "ACTIVO") {
     await exigirNoConciliado(tx, { gastoId: g.id });
     await tx.gasto.update({ where: { id: g.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Compra de inventario anulada" } });
+  }
+}
+
+/** Al anular el cobro de un traslado, su ingreso queda cancelado (a menos que ya esté conciliado con el banco). */
+export async function cancelarIngresoDeTraslado(tx: Tx, ingresoId: string, usuarioId?: string) {
+  const i = await tx.ingreso.findUnique({ where: { id: ingresoId } });
+  if (i && i.estado === "ACTIVO") {
+    await exigirNoConciliado(tx, { ingresoId: i.id });
+    await tx.ingreso.update({ where: { id: i.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Cobro del traslado anulado" } });
   }
 }
 

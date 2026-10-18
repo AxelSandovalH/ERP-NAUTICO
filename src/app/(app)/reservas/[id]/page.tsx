@@ -3,10 +3,10 @@ import { notFound } from "next/navigation";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
-import { dinero, fechaLarga } from "@/lib/fechas";
+import { aIso, dinero, fechaLarga } from "@/lib/fechas";
 import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_RESERVA, METODOS_PAGO, ORIGENES, TONO_RESERVA } from "@/lib/etiquetas";
-import { Card, Campo, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from "@/components/ui";
+import { BotonLink, Card, Campo, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { cambiarBeneficiario, cambiarEstado, eliminarPago, registrarPago } from "../actions";
@@ -14,6 +14,8 @@ import { ROLES_TRIPULANTE, ESTADOS_COMISION } from "@/lib/etiquetas";
 import { FormAsignarTripulante } from "@/components/form-asignar-tripulante";
 import { quitarTripulante } from "../../tripulacion/actions";
 import { horaLlegadaPorDefecto } from "@/lib/tripulacion/asignar";
+import { trasladosDeReserva } from "@/lib/transporte/servicio";
+import { ESTADOS_TRASLADO, TIPOS_TRASLADO, TONO_TRASLADO } from "@/lib/transporte/horario";
 
 const SIGUIENTES: Record<string, { a: "PENDIENTE" | "CONFIRMADA" | "COMPLETADA" | "CANCELADA"; etiqueta: string; peligro?: boolean }[]> = {
   PENDIENTE: [{ a: "CONFIRMADA", etiqueta: "Confirmar" }, { a: "CANCELADA", etiqueta: "Cancelar", peligro: true }],
@@ -29,7 +31,8 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
   const conTripulacion = s.modulos.includes("tripulacion");
   const conComisiones = s.modulos.includes("comisiones");
   const conIngresos = s.modulos.includes("ingresos");
-  const { r, tripulantes, beneficiarios, cuentas } = await withTenant(s.tenantId, async (tx) => {
+  const conTransporte = s.modulos.includes("transporte") && puede(s.rol, "transporte:ver");
+  const { r, tripulantes, beneficiarios, cuentas, traslados } = await withTenant(s.tenantId, async (tx) => {
     const r = await tx.reserva.findUnique({
       where: { id },
       include: {
@@ -43,7 +46,8 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
       : [];
     const beneficiarios = conComisiones && r ? await tx.beneficiario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }) : [];
     const cuentas = conIngresos && r ? await tx.cuenta.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } }) : [];
-    return { r, tripulantes, beneficiarios, cuentas };
+    const traslados = conTransporte && r ? await trasladosDeReserva(tx, r.id) : [];
+    return { r, tripulantes, beneficiarios, cuentas, traslados };
   });
   if (!r) notFound();
   const pagado = r.pagos.reduce((a, p) => a + p.montoCentavos, 0);
@@ -144,6 +148,30 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
               </Tabla>
             )}
             {asignar && <FormAsignarTripulante reservaId={r.id} opciones={asignables} horaLlegada={horaLlegadaPorDefecto(r.inicioMin)} />}
+          </Card>
+        )}
+
+        {conTransporte && (
+          <Card>
+            <div className="mb-4 flex items-center justify-between gap-2">
+              <h2 className="font-semibold">Transporte</h2>
+              {puede(s.rol, "transporte:gestionar") && r.estado !== "CANCELADA" && <BotonLink href={`/transporte/nuevo?reserva=${r.id}`} variante="suave">Agregar traslado</BotonLink>}
+            </div>
+            {traslados.length === 0 ? <p className="text-sm text-muted">Sin traslados para esta reserva.</p> : (
+              <Tabla>
+                <thead><tr><Th>Cuándo</Th><Th>Ruta</Th><Th>Unidad · Chofer</Th><Th>Estado</Th></tr></thead>
+                <tbody>
+                  {traslados.map((t) => (
+                    <tr key={t.id}>
+                      <Td className="whitespace-nowrap"><Link href={`/transporte/${t.id}`} className="text-brand">{aIso(t.fecha)} {minutosAHora(t.horaMin)}</Link><span className="block text-xs text-muted">{TIPOS_TRASLADO[t.tipo]}</span></Td>
+                      <Td className="text-xs">{t.origen}<span className="block text-muted">→ {t.destino}</span></Td>
+                      <Td className="text-xs">{t.unidad?.nombre ?? "Sin unidad"}<span className="block text-muted">{t.chofer ? t.chofer.nombre : "Sin chofer"}</span></Td>
+                      <Td><Insignia tono={TONO_TRASLADO[t.estado]}>{ESTADOS_TRASLADO[t.estado]}</Insignia></Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </Tabla>
+            )}
           </Card>
         )}
 
