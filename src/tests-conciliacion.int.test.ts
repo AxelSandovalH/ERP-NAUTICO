@@ -114,6 +114,32 @@ describe("conciliar", () => {
   });
 });
 
+describe("tanda en una sola transacción con puntos de guardado", () => {
+  it("un renglón que falla (incluso por la base de datos) se revierte solo y los demás se aplican", async () => {
+    const g1 = await gasto(A, "2025-06-01", 4_100, "Tanda uno"), g2 = await gasto(A, "2025-06-02", 4_200, "Tanda dos");
+    await imp(A, [L("2025-06-01", -4_100, "TANDA1"), L("2025-06-02", -4_200, "TANDA2"), L("2025-06-03", -4_300, "TANDA3")]);
+    const ls = await lineas(A);
+    const [l1, l2, l3] = ["TANDA1", "TANDA2", "TANDA3"].map((d) => ls.find((x) => x.descripcion === d)!);
+    const resultados: string[] = [];
+    await withTenant(A.t, async (tx) => {
+      const paso = async (n: string, fn: () => Promise<unknown>) => {
+        await tx.$executeRawUnsafe(`SAVEPOINT ${n}`);
+        try { await fn(); await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${n}`); resultados.push("ok"); }
+        catch (e) { await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${n}`); resultados.push((e as { code?: string }).code ?? "error"); }
+      };
+      await paso("a", () => conciliar(tx, l1.id, `g:${g1.id}`));
+      await paso("b", () => conciliar(tx, l3.id, `g:${g1.id}`)); // importe distinto: falla en la lógica
+      await paso("c", () => tx.movimientoBanco.update({ where: { id: l3.id }, data: { gastoId: g1.id } })); // viola la unicidad en la base de datos
+      await paso("d", () => conciliar(tx, l2.id, `g:${g2.id}`)); // la transacción sigue viva
+    });
+    expect(resultados).toEqual(["ok", "error", "P2002", "ok"]);
+    const despues = await lineas(A);
+    expect(despues.find((x) => x.id === l1.id)?.estado).toBe("CONCILIADA");
+    expect(despues.find((x) => x.id === l2.id)?.estado).toBe("CONCILIADA");
+    expect(despues.find((x) => x.id === l3.id)).toMatchObject({ estado: "PENDIENTE", gastoId: null });
+  });
+});
+
 describe("ignorar y restaurar", () => {
   it("ida y vuelta", async () => {
     await imp(A, [L("2025-04-10", -500, "CARGO RARO")]);

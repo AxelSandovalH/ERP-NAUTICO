@@ -88,7 +88,7 @@ export default async function CuentaConciliacionPage({ params, searchParams }: {
       {ver === "pendientes" && "p" in d && (
         d.p.lineas.length === 0 ? <Vacio>No hay movimientos del banco por conciliar. Importa un estado de cuenta arriba.</Vacio> : (
           <Formulario accion={conciliarAccion.bind(null, cuentaId)} enviar="Aplicar selección">
-            <p className="text-sm text-muted">El sistema propone la pareja con el mismo importe y fecha cercana. Revisa, cambia lo que haga falta y aplica. {d.p.total > d.p.lineas.length && `Se muestran los primeros ${d.p.lineas.length} de ${d.p.total}.`}</p>
+            <p className="text-sm text-muted">El sistema propone la pareja con el mismo importe y fecha cercana. Revisa, cambia lo que haga falta y aplica. {d.p.total > d.p.lineas.length && `Se muestran los primeros ${d.p.lineas.length} de ${d.p.total}; al aplicar aparecen los siguientes.`}</p>
             <div className="grid gap-3 sm:grid-cols-2">
               <Campo etiqueta="Categoría de los gastos que se creen">
                 <Select name="categoriaGasto"><option value="">Sin categoría</option>{d.categorias.filter((x) => x.tipo === "GASTO").map((x) => <option key={x.id} value={x.id}>{x.nombre}</option>)}</Select>

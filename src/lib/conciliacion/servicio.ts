@@ -147,7 +147,7 @@ export async function crearDesdeLinea(tx: Tx, tenantId: string, lineaId: string,
 
 const VENTANA_OPCIONES = 10, VENTANA_PRESELECCION = 3;
 
-export async function pendientesConSugerencias(tx: Tx, cuentaId: string, limite = 300) {
+export async function pendientesConSugerencias(tx: Tx, cuentaId: string, limite = 100) {
   const lineas = await tx.movimientoBanco.findMany({ where: { cuentaId, estado: "PENDIENTE" }, orderBy: [{ fecha: "asc" }, { creadoEn: "asc" }], take: limite });
   const total = await tx.movimientoBanco.count({ where: { cuentaId, estado: "PENDIENTE" } });
   if (lineas.length === 0) return { lineas: [], total, candidatos: [] as Candidato[], sugerencias: new Map<string, ReturnType<typeof sugerir> extends Map<string, infer S> ? S : never>() };

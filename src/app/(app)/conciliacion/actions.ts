@@ -52,11 +52,15 @@ export async function conciliarAccion(cuentaId: string, _: EstadoForm, fd: FormD
   const categoriaGasto = String(fd.get("categoriaGasto") ?? "") || null, categoriaIngreso = String(fd.get("categoriaIngreso") ?? "") || null;
   const r = { conciliados: 0, creados: 0, ignorados: 0 };
   const errores: string[] = [];
-  for (const [campo, valor] of fd.entries()) {
-    if (!campo.startsWith("m_") || typeof valor !== "string" || !valor) continue;
-    const lineaId = campo.slice(2);
-    try {
-      await withTenant(s.tenantId, async (tx) => {
+  const filas = [...fd.entries()].filter((e): e is [string, string] => e[0].startsWith("m_") && typeof e[1] === "string" && !!e[1]);
+  // Una sola transacción para toda la tanda (una por renglón sería lentísimo); cada renglón va en su propio
+  // punto de guardado, así que uno que falle se revierte solo y los demás se aplican.
+  await withTenant(s.tenantId, async (tx) => {
+    let n = 0;
+    for (const [campo, valor] of filas) {
+      const lineaId = campo.slice(2), punto = `fila_${n++}`;
+      await tx.$executeRawUnsafe(`SAVEPOINT ${punto}`);
+      try {
         if (valor === "nuevo") {
           const l = await tx.movimientoBanco.findUnique({ where: { id: lineaId }, select: { montoCentavos: true, cuentaId: true } });
           if (!l || l.cuentaId !== cuentaId) throw new ErrorConciliacion("El movimiento del banco no existe.");
@@ -64,12 +68,14 @@ export async function conciliarAccion(cuentaId: string, _: EstadoForm, fd: FormD
           r.creados++;
         } else if (valor === "ignorar") { await ignorar(tx, lineaId, s.usuarioId); r.ignorados++; }
         else { await conciliar(tx, lineaId, valor, s.usuarioId); r.conciliados++; }
-      });
-    } catch (e) {
-      if (!esperado(e)) throw e;
-      errores.push((e as Error).message);
+        await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${punto}`);
+      } catch (e) {
+        await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${punto}`);
+        if (!esperado(e) && (e as { code?: string }).code !== "P2002") throw e;
+        errores.push((e as Error).message);
+      }
     }
-  }
+  }, { timeoutMs: 120_000 });
   refrescar();
   const partes = [r.conciliados && `${r.conciliados} conciliado${r.conciliados === 1 ? "" : "s"}`, r.creados && `${r.creados} creado${r.creados === 1 ? "" : "s"} desde el banco`, r.ignorados && `${r.ignorados} sin pareja`].filter(Boolean);
   if (errores.length) return { error: `${partes.join(", ") || "Nada se aplicó"}. ${errores.length} con problema: ${[...new Set(errores)].slice(0, 2).join(" ")}` };
