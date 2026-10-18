@@ -5,10 +5,12 @@ import { aDate, dinero, hoyIso, mesDe, sumarMeses } from "@/lib/fechas";
 import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_RESERVA, TONO_RESERVA } from "@/lib/etiquetas";
 import { Card, Insignia, PageHeader, Vacio } from "@/components/ui";
+import { puede } from "@/modules/permisos";
 import { periodoDe } from "@/lib/reportes/rangos";
 import { reporteDe } from "@/lib/reportes/servicio";
 import { variacion } from "@/lib/reportes/agregar";
 import { Tile } from "@/components/graficas/tile";
+import { contarPorReabastecer } from "@/lib/inventario/servicio";
 
 export const metadata = { title: "Panel · ERP Náutico" };
 
@@ -39,9 +41,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Resumen financiero del mes (solo con el módulo de reportes); se calcula aparte para no encarecer a quien no lo tiene
   const verReportes = s.modulos.includes("reportes") && (s.modulos.includes("gastos") || s.modulos.includes("ingresos"));
   const fin = verReportes ? (await withTenant(s.tenantId, (tx) => reporteDe(tx, periodoDe("este_mes", hoy), { finanzas: true, reservas: false }))).finanzas : null;
+  const verInventario = s.modulos.includes("inventario") && puede(s.rol, "inventario:ver");
+  const porReabastecer = verInventario ? await withTenant(s.tenantId, (tx) => contarPorReabastecer(tx)) : 0;
   return (
     <>
       <PageHeader titulo={`Hola, ${s.nombre.split(" ")[0]}`} sub={s.tenantNombre} />
+      {porReabastecer > 0 && <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">Hay {porReabastecer} artículo{porReabastecer === 1 ? "" : "s"} de inventario por debajo de su mínimo. <Link href="/inventario" className="font-medium underline">Ver inventario</Link></p>}
       {aviso && AVISOS[aviso] && <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">{AVISOS[aviso]}</p>}
       {!datos ? <Vacio>Activa el módulo de Reservas para ver tu operación.</Vacio> : (
         <>

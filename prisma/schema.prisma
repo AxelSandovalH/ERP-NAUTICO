@@ -85,6 +85,10 @@ model Tenant {
   plantillasTurno   PlantillaTurno[]
   turnosEmpleado    TurnoEmpleado[]
   semanasPublicadas SemanaPublicada[]
+
+  ubicaciones           Ubicacion[]
+  articulos             Articulo[]
+  movimientosInventario MovimientoInventario[]
 }
 
 model Usuario {
@@ -148,6 +152,8 @@ model Embarcacion {
   tarifasComision  TarifaComision[]
   tripulantesFijos TripulanteEmbarcacion[]
   gastos           Gasto[]
+
+  ubicacionInventario Ubicacion?
 
   @@unique([tenantId, nombre])
   @@index([tenantId])
@@ -702,6 +708,7 @@ enum OrigenMovimiento {
   PAGO_RESERVA
   NOMINA
   COMISION
+  INVENTARIO
 }
 
 // Donde está el dinero: caja de efectivo, cuenta de banco, tarjeta, pasarela de pago.
@@ -795,6 +802,8 @@ model Gasto {
 
   comprobantes Comprobante[]
   lineaBanco   MovimientoBanco?
+
+  movimientoInventario MovimientoInventario?
 
   @@index([tenantId, fecha])
   @@index([cuentaId])
@@ -1068,4 +1077,88 @@ model SemanaPublicada {
 
   @@unique([tenantId, semana])
   @@index([tenantId])
+}
+
+// ─── Inventario ──────────────────────────────────────────────────────────────
+
+enum TipoUbicacion {
+  ALMACEN
+  EMBARCACION
+}
+
+enum TipoMovInventario {
+  COMPRA
+  CONSUMO
+  MERMA
+  AJUSTE
+  TRASPASO_SALIDA
+  TRASPASO_ENTRADA
+}
+
+// Dónde está el inventario: una bodega o una embarcación (una por embarcación, creada sola)
+model Ubicacion {
+  id            String        @id @default(cuid())
+  tenantId      String
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre        String
+  tipo          TipoUbicacion
+  embarcacionId String?       @unique
+  embarcacion   Embarcacion?  @relation(fields: [embarcacionId], references: [id], onDelete: Cascade)
+  activa        Boolean       @default(true)
+  creadoEn      DateTime      @default(now())
+
+  movimientos MovimientoInventario[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+// Un insumo. Las cantidades se guardan en milésimas de la unidad (2.5 L = 2500) para no perder precisión.
+model Articulo {
+  id          String   @id @default(cuid())
+  tenantId    String
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre      String
+  unidad      String
+  categoria   String?
+  // Existencia mínima (suma de todas las ubicaciones); debajo de ella se avisa que hay que reabastecer
+  minimoMilli Int      @default(0)
+  activo      Boolean  @default(true)
+  notas       String?
+  creadoEn    DateTime @default(now())
+
+  movimientos MovimientoInventario[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+// Libro de movimientos: la existencia de un artículo en una ubicación es la suma de los suyos (+ entra, − sale).
+model MovimientoInventario {
+  id                    String            @id @default(cuid())
+  tenantId              String
+  tenant                Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  articuloId            String
+  articulo              Articulo          @relation(fields: [articuloId], references: [id])
+  ubicacionId           String
+  ubicacion             Ubicacion         @relation(fields: [ubicacionId], references: [id])
+  tipo                  TipoMovInventario
+  cantidadMilli         Int
+  // Solo compras: costo por unidad en la moneda base de la empresa
+  costoUnitarioCentavos Int?
+  fecha                 DateTime          @db.Date
+  proveedor             String?
+  notas                 String?
+  // Une las dos mitades de un traspaso, o los renglones de un mismo conteo físico
+  grupoId               String?
+  // La compra que se pagó desde una cuenta genera su gasto
+  gastoId               String?           @unique
+  gasto                 Gasto?            @relation(fields: [gastoId], references: [id], onDelete: SetNull)
+  estado                EstadoMovimiento  @default(ACTIVO)
+  registradoPorId       String?
+  creadoEn              DateTime          @default(now())
+
+  @@index([tenantId, articuloId, ubicacionId])
+  @@index([tenantId, fecha])
+  @@index([grupoId])
 }

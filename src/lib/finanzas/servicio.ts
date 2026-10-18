@@ -82,7 +82,10 @@ export async function cancelarGasto(tx: Tx, id: string, usuarioId: string, motiv
   const g = await tx.gasto.findUnique({ where: { id } });
   if (!g) throw new ErrorFinanzas("El gasto no existe.");
   if (g.estado === "CANCELADO") throw new ErrorFinanzas("El gasto ya está cancelado.");
-  if (g.origen !== "MANUAL") throw new ErrorFinanzas(g.origen === "NOMINA" ? "Este gasto lo generó un pago de nómina: cancela el pago de nómina." : "Este gasto lo generó un abono de comisiones: anula el abono.");
+  if (g.origen !== "MANUAL")
+    throw new ErrorFinanzas(g.origen === "NOMINA" ? "Este gasto lo generó un pago de nómina: cancela el pago de nómina."
+      : g.origen === "INVENTARIO" ? "Este gasto lo generó una compra de inventario: anula la compra en Inventario."
+      : "Este gasto lo generó un abono de comisiones: anula el abono.");
   if (motivo.trim().length < 3) throw new ErrorFinanzas("Indica el motivo de la cancelación.");
   await exigirNoConciliado(tx, { gastoId: id });
   return tx.gasto.update({ where: { id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: motivo.trim() } });
@@ -264,6 +267,15 @@ export async function cancelarGastoDeNomina(tx: Tx, pagoNominaId: string, usuari
   if (g && g.estado === "ACTIVO") {
     await exigirNoConciliado(tx, { gastoId: g.id });
     await tx.gasto.update({ where: { id: g.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Pago de nómina cancelado" } });
+  }
+}
+
+/** Al anular una compra de inventario, su gasto queda cancelado (a menos que ya esté conciliado con el banco). */
+export async function cancelarGastoDeInventario(tx: Tx, gastoId: string, usuarioId?: string) {
+  const g = await tx.gasto.findUnique({ where: { id: gastoId } });
+  if (g && g.estado === "ACTIVO") {
+    await exigirNoConciliado(tx, { gastoId: g.id });
+    await tx.gasto.update({ where: { id: g.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Compra de inventario anulada" } });
   }
 }
 

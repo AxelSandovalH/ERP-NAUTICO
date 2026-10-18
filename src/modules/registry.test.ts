@@ -25,7 +25,7 @@ describe("registro de módulos", () => {
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
   it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
-    for (const id of ["inventario", "transporte", "facturacion"] as ModuloId[]) {
+    for (const id of ["transporte", "facturacion"] as ModuloId[]) {
       expect(esConstruido(id)).toBe(false);
       expect(modulosActivos(["flota", id])).not.toContain(id);
       expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
@@ -42,6 +42,24 @@ describe("conciliación bancaria", () => {
     expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("conciliacion");
     expect(MODULOS_POR_PLAN.GESTION).not.toContain("conciliacion");
     expect(MODULOS_POR_PLAN.CONTROL).not.toContain("conciliacion");
+  });
+});
+
+describe("inventario", () => {
+  it("es un módulo construido que necesita gastos y viene desde el plan Gestión", () => {
+    expect(esConstruido("inventario")).toBe(true);
+    expect(modulosActivos(["inventario"])).not.toContain("inventario"); // sin gastos no se activa
+    expect(modulosActivos(["gastos", "inventario"])).toEqual(expect.arrayContaining(["inventario", "gastos", "cuentas"]));
+    expect(MODULOS_POR_PLAN.CONTROL).not.toContain("inventario");
+    expect(MODULOS_POR_PLAN.GESTION).toContain("inventario");
+    expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("inventario");
+  });
+  it("permisos: operaciones registra consumos; solo administradores y gerentes compran y administran", () => {
+    expect(puede("OPERACIONES", "inventario:ver")).toBe(true);
+    expect(puede("OPERACIONES", "inventario:operar")).toBe(true);
+    expect(puede("OPERACIONES", "inventario:administrar")).toBe(false);
+    expect(puede("GERENTE", "inventario:administrar")).toBe(true);
+    expect(puede("VENDEDOR", "inventario:ver")).toBe(false);
   });
 });
 
