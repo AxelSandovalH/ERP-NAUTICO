@@ -81,6 +81,10 @@ model Tenant {
   importacionesBanco   ImportacionBanco[]
   movimientosBanco     MovimientoBanco[]
   cierresConciliacion  CierreConciliacion[]
+
+  plantillasTurno   PlantillaTurno[]
+  turnosEmpleado    TurnoEmpleado[]
+  semanasPublicadas SemanaPublicada[]
 }
 
 model Usuario {
@@ -557,6 +561,8 @@ model Empleado {
   dias     DiaAsistencia[]
   pagos    PagoNomina[]
 
+  turnos TurnoEmpleado[]
+
   @@index([tenantId])
 }
 
@@ -998,5 +1004,68 @@ model CierreConciliacion {
   cerradoEn            DateTime @default(now())
 
   @@unique([cuentaId, mes])
+  @@index([tenantId])
+}
+
+// ─── Horarios ────────────────────────────────────────────────────────────────
+
+enum TipoTurno {
+  TURNO
+  DESCANSO
+  VACACIONES
+  INCAPACIDAD
+  PERMISO
+}
+
+// Turnos tipo ("Mañana 8–16"). Si fin <= inicio, el turno cruza la medianoche.
+model PlantillaTurno {
+  id        String   @id @default(cuid())
+  tenantId  String
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre    String
+  inicioMin Int
+  finMin    Int
+  color     String   @default("#0ea5e9")
+  activa    Boolean  @default(true)
+  creadoEn  DateTime @default(now())
+
+  turnos TurnoEmpleado[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+// Qué hace una persona un día. Los datos del turno se COPIAN de la plantilla: editarla después no mueve lo ya asignado.
+model TurnoEmpleado {
+  id            String          @id @default(cuid())
+  tenantId      String
+  tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  empleadoId    String
+  empleado      Empleado        @relation(fields: [empleadoId], references: [id], onDelete: Cascade)
+  fecha         DateTime        @db.Date
+  tipo          TipoTurno
+  plantillaId   String?
+  plantilla     PlantillaTurno? @relation(fields: [plantillaId], references: [id], onDelete: SetNull)
+  etiqueta      String?
+  inicioMin     Int?
+  finMin        Int?
+  color         String?
+  asignadoPorId String?
+  actualizadoEn DateTime        @updatedAt
+
+  @@unique([empleadoId, fecha])
+  @@index([tenantId, fecha])
+}
+
+// Una semana (identificada por su lunes) que el equipo ya puede ver
+model SemanaPublicada {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  semana         DateTime @db.Date
+  publicadaPorId String?
+  publicadaEn    DateTime @default(now())
+
+  @@unique([tenantId, semana])
   @@index([tenantId])
 }

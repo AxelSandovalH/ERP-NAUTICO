@@ -103,7 +103,16 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
     requiere: ["cuentas", "reservas"],
     nav: [{ href: "/ingresos", etiqueta: "Ingresos", permiso: "ingresos:ver" }],
   },
-  horarios: { id: "horarios", nombre: "Horarios", descripcion: "Planeación de turnos y descansos del equipo.", requiere: [], proximamente: true, nav: [] },
+  horarios: {
+    id: "horarios",
+    nombre: "Horarios",
+    descripcion: "Planeación semanal de turnos, descansos y ausencias del equipo, con publicación para cada persona.",
+    requiere: [],
+    nav: [
+      { href: "/horarios", etiqueta: "Horarios", permiso: "horarios:administrar" },
+      { href: "/horarios/mio", etiqueta: "Mi horario", permiso: "horarios:ver_propio" },
+    ],
+  },
   inventario: { id: "inventario", nombre: "Inventario", descripcion: "Existencias, compras y salidas de insumos.", requiere: [], proximamente: true, nav: [] },
   transporte: { id: "transporte", nombre: "Transporte", descripcion: "Traslados de clientes, unidades y choferes.", requiere: [], proximamente: true, nav: [] },
   facturacion: { id: "facturacion", nombre: "Facturación", descripcion: "Facturas recibidas de proveedores y emitidas a clientes (CFDI).", requiere: [], proximamente: true, nav: [] },
@@ -130,7 +139,7 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "horarios", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
 
 /** Lo que incluye cada plan, en el orden y con los nombres con que se vende. Cada plan incluye todo lo
  *  anterior. Una característica puede cubrir varios módulos (p. ej. el calendario necesita las reservas). */

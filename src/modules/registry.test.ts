@@ -25,7 +25,7 @@ describe("registro de módulos", () => {
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
   it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
-    for (const id of ["horarios", "inventario", "transporte", "facturacion"] as ModuloId[]) {
+    for (const id of ["inventario", "transporte", "facturacion"] as ModuloId[]) {
       expect(esConstruido(id)).toBe(false);
       expect(modulosActivos(["flota", id])).not.toContain(id);
       expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
@@ -42,6 +42,21 @@ describe("conciliación bancaria", () => {
     expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("conciliacion");
     expect(MODULOS_POR_PLAN.GESTION).not.toContain("conciliacion");
     expect(MODULOS_POR_PLAN.CONTROL).not.toContain("conciliacion");
+  });
+});
+
+describe("horarios", () => {
+  it("es un módulo construido e independiente, incluido desde el plan Control", () => {
+    expect(esConstruido("horarios")).toBe(true);
+    expect(modulosActivos(["horarios"])).toContain("horarios");
+    for (const plan of ["CONTROL", "GESTION", "ENTERPRISE"] as const) expect(MODULOS_POR_PLAN[plan]).toContain("horarios");
+  });
+  it("todos ven su horario; solo administradores, gerentes y operaciones lo planean", () => {
+    for (const rol of ["ADMIN", "GERENTE", "VENDEDOR", "OPERACIONES"] as const) expect(puede(rol, "horarios:ver_propio")).toBe(true);
+    expect(puede("ADMIN", "horarios:administrar")).toBe(true);
+    expect(puede("GERENTE", "horarios:administrar")).toBe(true);
+    expect(puede("OPERACIONES", "horarios:administrar")).toBe(true);
+    expect(puede("VENDEDOR", "horarios:administrar")).toBe(false);
   });
 });
 

@@ -48,9 +48,10 @@ export function Campo({ etiqueta, ayuda, children, className }: { etiqueta: stri
   );
 }
 
-export const Input = (p: ComponentProps<"input">) => <input className={campo} {...p} />;
-export const Select = (p: ComponentProps<"select">) => <select className={campo} {...p} />;
-export const Textarea = (p: ComponentProps<"textarea">) => <textarea className={cx(campo, "min-h-20")} {...p} />;
+// className se suma al estilo base (antes lo reemplazaba y el campo perdía borde y relleno)
+export const Input = ({ className, ...p }: ComponentProps<"input">) => <input className={cx(campo, className)} {...p} />;
+export const Select = ({ className, ...p }: ComponentProps<"select">) => <select className={cx(campo, className)} {...p} />;
+export const Textarea = ({ className, ...p }: ComponentProps<"textarea">) => <textarea className={cx(campo, "min-h-20", className)} {...p} />;
 
 const tonos = {
   gris: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200",
