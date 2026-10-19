@@ -6,6 +6,7 @@ import "./globals.css";
 const geist = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || "https://www.fleetnautic.com"),
   title: "FleetNautic",
   description: "Plataforma modular para operadores náuticos: reservas, flota, equipo, finanzas y facturación.",
 };

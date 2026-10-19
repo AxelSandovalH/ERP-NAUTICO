@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import {
-  BarChart3, Banknote, Boxes, Bus, CalendarClock, CalendarDays, Check, FileText, Landmark, Menu, Percent, ShieldCheck, Ship, Smartphone, TrendingUp, UsersRound, Wallet, type LucideIcon,
+  BarChart3, Banknote, Boxes, Bus, CalendarClock, CalendarDays, Check, FileText, Landmark, Mail, Menu, MessageCircle, Phone, Percent, ShieldCheck, Ship, Smartphone, TrendingUp, UsersRound, Wallet, type LucideIcon,
 } from "lucide-react";
 import { LogoMarca } from "@/components/logo";
 import { DIAS_PRUEBA } from "@/lib/suscripcion/prueba";
@@ -9,6 +9,8 @@ import { TASA_CARGO, TASA_IVA_SUSCRIPCION, desglosePlan } from "@/lib/stripe/sus
 import { PLANES, PLANES_DE_PAGO } from "@/modules/registry";
 import { dinero } from "@/lib/fechas";
 import { MockProducto } from "./mock-producto";
+import { Vitrina } from "./vitrina";
+import { CONTACTO } from "./contacto";
 
 // Sobre el fondo navy el bote del logo pasa a blanco (la ola ya es azul pato)
 const SOBRE_NAVY = { "--logo-bote": "#ffffff" } as CSSProperties;
@@ -48,8 +50,25 @@ const boton = "inline-flex items-center justify-center rounded-lg px-5 py-3 text
 
 export function Landing() {
   const planes = PLANES_DE_PAGO.map((id) => ({ id, def: PLANES[id], d: desglosePlan(PLANES[id].precioMxnMensual ?? 0) }));
+  const sitio = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.fleetnautic.com").replace(/\/$/, "");
+  // Datos estructurados: permiten que buscadores y herramientas que leen la URL la reconozcan como un producto con precio
+  const datos = {
+    "@context": "https://schema.org",
+    "@type": ["Product", "SoftwareApplication"],
+    name: "FleetNautic",
+    description: "Software para operadores náuticos: reservas, flota, equipo, finanzas, inventario, transporte y facturación.",
+    url: sitio,
+    image: `${sitio}/opengraph-image`,
+    brand: { "@type": "Brand", name: "FleetNautic" },
+    applicationCategory: "BusinessApplication",
+    operatingSystem: "Web",
+    offers: planes.map(({ def, d }) => ({
+      "@type": "Offer", name: def.nombre, url: `${sitio}/registro`, priceCurrency: "MXN", price: (d.precioCentavos / 100).toFixed(2), availability: "https://schema.org/InStock",
+    })),
+  };
   return (
     <div className="scroll-smooth bg-background text-foreground">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(datos).replace(/</g, "\\u003c") }} />
       {/* Barra superior */}
       <header className="sticky top-0 z-50 border-b border-white/10 bg-navy/95 backdrop-blur" style={SOBRE_NAVY}>
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 md:px-8">
@@ -109,6 +128,18 @@ export function Landing() {
               </li>
             ))}
           </ul>
+        </section>
+
+        {/* Así se ve por dentro */}
+        <section className="border-y border-line bg-surface/50 py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <p className="text-sm font-semibold uppercase tracking-wide text-brand">Así se ve por dentro</p>
+              <h2 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Pensado para el día a día de tu flota</h2>
+              <p className="mt-4 text-muted">Una muestra de cómo se construye cada módulo, con datos de ejemplo.</p>
+            </div>
+            <Vitrina />
+          </div>
         </section>
 
         {/* Cómo empezar */}
@@ -195,19 +226,35 @@ export function Landing() {
             <h2 className="text-3xl font-semibold tracking-tight md:text-4xl">Pon tu flota en orden esta semana</h2>
             <p className="mt-4 text-slate-300">Crea tu cuenta, da de alta tus embarcaciones y toma tu primera reserva hoy.</p>
             <Link href="/registro" className={`${boton} mt-8 bg-pato text-navy hover:bg-[#2dd4db]`}>Probar {DIAS_PRUEBA} días gratis</Link>
+            <p className="mt-10 text-sm text-slate-300">¿Dudas? Escríbenos o llámanos</p>
+            <div className="mt-3 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a href={CONTACTO.whatsapp} target="_blank" rel="noopener noreferrer" className={`${boton} border border-white/25 text-white hover:bg-white/10`}><MessageCircle className="mr-2 h-4 w-4" />WhatsApp</a>
+              <a href={CONTACTO.tel} className={`${boton} border border-white/25 text-white hover:bg-white/10`}><Phone className="mr-2 h-4 w-4" />{CONTACTO.telefonoVisible}</a>
+              <a href={`mailto:${CONTACTO.email}`} className={`${boton} border border-white/25 text-white hover:bg-white/10`}><Mail className="mr-2 h-4 w-4" />{CONTACTO.email}</a>
+            </div>
           </div>
         </section>
       </main>
 
       <footer className="bg-navy py-10 text-slate-400" style={SOBRE_NAVY}>
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-4 text-sm md:flex-row md:px-8">
-          <LogoMarca className="h-auto w-20" titulo="FleetNautic" />
-          <nav aria-label="Pie" className="flex gap-6">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4 text-sm md:grid-cols-3 md:px-8">
+          <div>
+            <LogoMarca className="h-auto w-24" titulo="FleetNautic" />
+            <p className="mt-3 max-w-xs">Software para operadores de charters, tours y renta de embarcaciones.</p>
+          </div>
+          <nav aria-label="Pie" className="flex flex-col gap-2">
             <Link href="/login" className="hover:text-white">Iniciar sesión</Link>
             <Link href="/registro" className="hover:text-white">Crear cuenta</Link>
+            <Link href="/privacidad" className="hover:text-white">Aviso de privacidad</Link>
+            <Link href="/terminos" className="hover:text-white">Términos y condiciones</Link>
           </nav>
-          <p>© {new Date().getFullYear()} FleetNautic</p>
+          <address className="flex flex-col gap-2 not-italic">
+            <a href={`mailto:${CONTACTO.email}`} className="hover:text-white">{CONTACTO.email}</a>
+            <a href={CONTACTO.tel} className="hover:text-white">Llamadas: {CONTACTO.telefonoVisible}</a>
+            <a href={CONTACTO.whatsapp} target="_blank" rel="noopener noreferrer" className="hover:text-white">WhatsApp: {CONTACTO.telefonoVisible}</a>
+          </address>
         </div>
+        <p className="mx-auto mt-8 max-w-6xl px-4 text-xs md:px-8">© {new Date().getFullYear()} FleetNautic</p>
       </footer>
     </div>
   );

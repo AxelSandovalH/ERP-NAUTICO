@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Los webhooks de Stripe no traen sesión: se autentican con la firma del evento
-const PUBLICAS = ["/login", "/registro", "/auth/callback", "/api/webhooks"];
+const PUBLICAS = ["/login", "/registro", "/auth/callback", "/api/webhooks", "/privacidad", "/terminos", "/opengraph-image", "/twitter-image", "/robots.txt", "/sitemap.xml"];
 
 /** Refresca la sesión de Supabase en cada request y protege las rutas privadas.
  *  Es un chequeo optimista (verifica el JWT); la autorización real ocurre en
