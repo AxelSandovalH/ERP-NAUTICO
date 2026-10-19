@@ -1,16 +1,28 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { compacto, escalaDeEje } from "@/lib/reportes/agregar";
 
 type Serie = { nombre: string; valores: number[]; variable: string };
 
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-const W = 720, H = 300, M = { l: 56, r: 12, t: 14, b: 30 };
+const ANCHO_INICIAL = 720, H = 280, M = { l: 52, r: 8, t: 14, b: 30 };
 
 /** Columnas por mes (una o varias series). Marcas finas con la punta redondeada, rejilla de líneas finas y tooltip por mes
  *  al pasar el cursor o enfocar con el teclado. La tabla es la vista equivalente de los mismos datos. */
 export function GraficaMensual({ meses, series, moneda, titulo }: { meses: string[]; series: Serie[]; moneda: string; titulo: string }) {
   const [activo, setActivo] = useState<number | null>(null);
+  // El dibujo se arma al ancho real de la tarjeta (1 px del dibujo = 1 px de pantalla): así el texto de los ejes no se encoge en el celular
+  const caja = useRef<HTMLElement>(null);
+  const [W, setW] = useState(ANCHO_INICIAL);
+  useEffect(() => {
+    const el = caja.current;
+    if (!el) return;
+    const medir = () => setW(Math.max(260, Math.round(el.clientWidth)));
+    medir();
+    const o = new ResizeObserver(medir);
+    o.observe(el);
+    return () => o.disconnect();
+  }, []);
   const [tabla, setTabla] = useState(false);
   const dinero = (c: number) => new Intl.NumberFormat("es-MX", { style: "currency", currency: moneda }).format(c / 100);
   const n = meses.length, k = series.length;
@@ -31,7 +43,7 @@ export function GraficaMensual({ meses, series, moneda, titulo }: { meses: strin
   };
 
   return (
-    <figure aria-label={titulo}>
+    <figure aria-label={titulo} ref={caja}>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
         {k > 1 ? (
           <ul className="flex flex-wrap gap-4 text-xs text-muted">

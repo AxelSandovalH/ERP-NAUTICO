@@ -48,6 +48,12 @@
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Una columna de una cuadrícula puede encogerse: sin esto, una tabla ancha (que ya se desplaza dentro de su caja)
+   ensanchaba toda la página en el celular. */
+main .grid > * {
+  min-width: 0;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);

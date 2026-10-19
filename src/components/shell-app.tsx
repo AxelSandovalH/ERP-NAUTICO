@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BarChart3, Banknote, FileText, Bus, Boxes, CalendarClock, CalendarDays, Landmark, Receipt, TrendingUp, Wallet, ClipboardList, Clock, LayoutDashboard, LogOut, Percent, Settings, Ship, Users, UsersRound, type LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { BarChart3, Banknote, Menu, X, FileText, Bus, Boxes, CalendarClock, CalendarDays, Landmark, Receipt, TrendingUp, Wallet, ClipboardList, Clock, LayoutDashboard, LogOut, Percent, Settings, Ship, Users, UsersRound, type LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { Logo, LogoMarca } from "./logo";
 
@@ -43,6 +44,9 @@ type Props = {
 export function ShellApp({ nav, tenantNombre, usuarioNombre, salir, children }: Props) {
   const pathname = usePathname();
   const compacto = pathname.startsWith("/calendario");
+  // En el celular el menú está plegado. Se guarda en qué pantalla se abrió: al navegar a otra se cierra solo.
+  const [abiertoEn, setAbiertoEn] = useState<string | null>(null);
+  const abierto = abiertoEn === pathname;
   return (
     <div className={`min-h-screen md:grid ${compacto ? "md:grid-cols-[64px_1fr]" : "md:grid-cols-[230px_1fr]"}`}>
       <aside className="border-b border-line bg-surface md:min-h-screen md:border-b-0 md:border-r">
@@ -58,8 +62,15 @@ export function ShellApp({ nav, tenantNombre, usuarioNombre, salir, children }: 
               <p className="mt-1 truncate text-xs text-muted">{tenantNombre}</p>
             </div>
           )}
+          <button
+            type="button" aria-expanded={abierto} aria-controls="menu-principal" aria-label={abierto ? "Cerrar menú" : "Abrir menú"}
+            onClick={() => setAbiertoEn(abierto ? null : pathname)}
+            className="flex h-10 w-10 items-center justify-center rounded-lg border border-line hover:bg-brand-soft md:hidden"
+          >
+            {abierto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+          </button>
         </div>
-        <nav className={`flex gap-1 overflow-x-auto px-2 pb-2 md:flex-col md:px-3 ${compacto ? "md:items-center md:px-1" : ""}`}>
+        <nav id="menu-principal" className={`${abierto ? "flex" : "hidden"} flex-col gap-1 px-2 pb-2 md:flex md:px-3 ${compacto ? "md:items-center md:px-1" : ""}`}>
           {nav.map((n) => {
             const Icono = ICONOS[n.href] ?? ClipboardList;
             const activo = pathname === n.href || pathname.startsWith(`${n.href}/`);
@@ -72,7 +83,7 @@ export function ShellApp({ nav, tenantNombre, usuarioNombre, salir, children }: 
             );
           })}
         </nav>
-        <form action={salir} className={`px-3 pb-3 md:pt-4 ${compacto ? "md:flex md:justify-center md:px-0" : ""}`}>
+        <form action={salir} className={`${abierto ? "block" : "hidden"} px-3 pb-3 md:pt-4 ${compacto ? "md:flex md:justify-center md:px-0" : "md:block"}`}>
           {!compacto && <p className="truncate px-3 text-xs text-muted">{usuarioNombre}</p>}
           <button title="Cerrar sesión" aria-label="Cerrar sesión"
             className={`mt-1 flex items-center gap-2 rounded-lg px-3 py-2 text-left text-sm text-muted hover:bg-brand-soft ${compacto ? "md:h-10 md:w-10 md:justify-center md:px-0" : "w-full"}`}>
