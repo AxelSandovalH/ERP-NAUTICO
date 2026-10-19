@@ -48,7 +48,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       <PageHeader titulo={`Hola, ${s.nombre.split(" ")[0]}`} sub={s.tenantNombre} />
       {porReabastecer > 0 && <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">Hay {porReabastecer} artículo{porReabastecer === 1 ? "" : "s"} de inventario por debajo de su mínimo. <Link href="/inventario" className="font-medium underline">Ver inventario</Link></p>}
       {aviso && AVISOS[aviso] && <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">{AVISOS[aviso]}</p>}
-      {!datos ? <Vacio>Activa el módulo de Reservas para ver tu operación.</Vacio> : (
+      {!datos ? <Vacio>{s.prueba?.vencida ? "Tu prueba gratuita terminó. Elige un plan en Configuración para reactivar tus módulos." : "Activa el módulo de Reservas para ver tu operación."}</Vacio> : (
         <>
           <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card><p className="text-sm text-muted">Salidas hoy</p><p className="mt-1 text-2xl font-semibold">{datos.hoyRes.length}</p></Card>
