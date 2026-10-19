@@ -130,7 +130,13 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
       { href: "/transporte/mios", etiqueta: "Mis traslados", permiso: "transporte:ver_propio" },
     ],
   },
-  facturacion: { id: "facturacion", nombre: "Facturación", descripcion: "Facturas recibidas de proveedores y emitidas a clientes (CFDI).", requiere: [], proximamente: true, nav: [] },
+  facturacion: {
+    id: "facturacion",
+    nombre: "Facturación",
+    descripcion: "CFDI de reservas y traslados cobrados, timbrados con Procura: datos fiscales del cliente, estado, XML, PDF y cancelación.",
+    requiere: ["reservas"],
+    nav: [{ href: "/facturacion", etiqueta: "Facturación", permiso: "facturacion:ver" }],
+  },
   conciliacion: {
     id: "conciliacion",
     nombre: "Conciliación bancaria",
@@ -154,7 +160,7 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "horarios", "inventario", "transporte", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "horarios", "inventario", "transporte", "facturacion", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
 
 /** Lo que incluye cada plan, en el orden y con los nombres con que se vende. Cada plan incluye todo lo
  *  anterior. Una característica puede cubrir varios módulos (p. ej. el calendario necesita las reservas). */

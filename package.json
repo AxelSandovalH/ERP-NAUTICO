@@ -17,6 +17,7 @@
     "db:seed:nomina": "tsx prisma/seed-nomina.ts",
     "db:storage": "tsx scripts/crear-bucket.ts",
     "stripe:configurar": "tsx scripts/configurar-stripe.ts",
+    "procura:conectar": "tsx scripts/conectar-procura.ts",
     "db:seed:finanzas": "tsx prisma/seed-finanzas.ts"
   },
   "dependencies": {

@@ -15,6 +15,7 @@ import { FormAsignarTripulante } from "@/components/form-asignar-tripulante";
 import { quitarTripulante } from "../../tripulacion/actions";
 import { horaLlegadaPorDefecto } from "@/lib/tripulacion/asignar";
 import { trasladosDeReserva } from "@/lib/transporte/servicio";
+import { ESTADOS_FACTURA, TONO_FACTURA } from "@/lib/facturacion/impuestos";
 import { ESTADOS_TRASLADO, TIPOS_TRASLADO, TONO_TRASLADO } from "@/lib/transporte/horario";
 
 const SIGUIENTES: Record<string, { a: "PENDIENTE" | "CONFIRMADA" | "COMPLETADA" | "CANCELADA"; etiqueta: string; peligro?: boolean }[]> = {
@@ -32,7 +33,8 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
   const conComisiones = s.modulos.includes("comisiones");
   const conIngresos = s.modulos.includes("ingresos");
   const conTransporte = s.modulos.includes("transporte") && puede(s.rol, "transporte:ver");
-  const { r, tripulantes, beneficiarios, cuentas, traslados } = await withTenant(s.tenantId, async (tx) => {
+  const conFacturacion = s.modulos.includes("facturacion") && puede(s.rol, "facturacion:ver");
+  const { r, tripulantes, beneficiarios, cuentas, traslados, facturas } = await withTenant(s.tenantId, async (tx) => {
     const r = await tx.reserva.findUnique({
       where: { id },
       include: {
@@ -47,7 +49,8 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
     const beneficiarios = conComisiones && r ? await tx.beneficiario.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }) : [];
     const cuentas = conIngresos && r ? await tx.cuenta.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } }) : [];
     const traslados = conTransporte && r ? await trasladosDeReserva(tx, r.id) : [];
-    return { r, tripulantes, beneficiarios, cuentas, traslados };
+    const facturas = conFacturacion && r ? await tx.facturaEmitida.findMany({ where: { reservaId: r.id }, orderBy: { creadoEn: "desc" } }) : [];
+    return { r, tripulantes, beneficiarios, cuentas, traslados, facturas };
   });
   if (!r) notFound();
   const pagado = r.pagos.reduce((a, p) => a + p.montoCentavos, 0);
@@ -148,6 +151,20 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
               </Tabla>
             )}
             {asignar && <FormAsignarTripulante reservaId={r.id} opciones={asignables} horaLlegada={horaLlegadaPorDefecto(r.inicioMin)} />}
+          </Card>
+        )}
+
+        {conFacturacion && (
+          <Card>
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <h2 className="font-semibold">Factura</h2>
+              {puede(s.rol, "facturacion:emitir") && !facturas.some((f) => f.estado !== "CANCELADA") && saldo <= 0 && r.estado !== "CANCELADA" && <BotonLink href={`/facturacion/nueva?reserva=${r.id}`} variante="suave">Facturar</BotonLink>}
+            </div>
+            {facturas.length === 0 ? <p className="text-sm text-muted">{saldo <= 0 && r.totalCentavos > 0 ? "Cobrada y sin factura." : "Se puede facturar cuando esté cobrada por completo."}</p> : (
+              <ul className="space-y-2 text-sm">
+                {facturas.map((f) => <li key={f.id} className="flex items-center justify-between gap-2"><Link href={`/facturacion/${f.id}`} className="text-brand">{aIso(f.creadoEn)} · {dinero(f.totalCentavos, s.moneda)}</Link><Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia></li>)}
+              </ul>
+            )}
           </Card>
         )}
 

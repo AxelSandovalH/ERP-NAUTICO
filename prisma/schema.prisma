@@ -92,6 +92,9 @@ model Tenant {
 
   unidadesTransporte UnidadTransporte[]
   traslados          Traslado[]
+
+  conexionProcura  ConexionProcura?
+  facturasEmitidas FacturaEmitida[]
 }
 
 model Usuario {
@@ -228,6 +231,14 @@ model Cliente {
 
   reservas Reserva[]
 
+  rfc                String?
+  razonSocialFiscal  String?
+  regimenFiscal      String?
+  codigoPostalFiscal String?
+  usoCfdi            String?
+  correoFactura      String?
+  facturas           FacturaEmitida[]
+
   @@index([tenantId])
   @@index([tenantId, nombre])
 }
@@ -269,6 +280,8 @@ model Reserva {
   ingresos    Ingreso[]
 
   traslados Traslado[]
+
+  facturas FacturaEmitida[]
 
   @@unique([tenantId, folio])
   @@index([tenantId, fecha])
@@ -1238,8 +1251,67 @@ model Traslado {
 
   gastos Gasto[]
 
+  facturas FacturaEmitida[]
+
   @@index([tenantId, fecha])
   @@index([unidadId, fecha])
   @@index([choferId, fecha])
   @@index([reservaId])
+}
+
+// ─── Facturación (con Procura) ───────────────────────────────────────────────
+
+enum EstadoFactura {
+  SOLICITADA
+  TIMBRADA
+  ERROR
+  CANCELANDO
+  CANCELADA
+}
+
+// La organización de Procura de esta empresa y la llave para hablar con ella (cifrada; solo el servidor la lee)
+model ConexionProcura {
+  id             String    @id @default(cuid())
+  tenantId       String    @unique
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organizacionId String?
+  llaveCifrada   String
+  // Clave de producto/servicio y de unidad del SAT con que se facturan las reservas (p. ej. servicios turísticos / E48)
+  claveProdServ  String?
+  claveUnidad    String    @default("E48")
+  activa         Boolean   @default(true)
+  verificadaEn   DateTime?
+  creadoEn       DateTime  @default(now())
+}
+
+// Un CFDI que se pidió a Procura para una reserva o un traslado cobrado. El IVA NO viene en el precio: se suma (16 %).
+model FacturaEmitida {
+  id               String        @id @default(cuid())
+  tenantId         String
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaId        String?
+  reserva          Reserva?      @relation(fields: [reservaId], references: [id], onDelete: Restrict)
+  trasladoId       String?
+  traslado         Traslado?     @relation(fields: [trasladoId], references: [id], onDelete: Restrict)
+  clienteId        String
+  cliente          Cliente       @relation(fields: [clienteId], references: [id], onDelete: Restrict)
+  subtotalCentavos Int
+  ivaCentavos      Int
+  totalCentavos    Int
+  formaPago        String // clave SAT de 2 dígitos (01, 03, 04…)
+  metodoPago       String // PUE o PPD
+  // Copia de los datos del receptor al momento de facturar (no cambia si luego se edita el cliente)
+  receptor         Json
+  procuraSaleId    String?
+  procuraCfdiId    String?
+  uuid             String?
+  estado           EstadoFactura @default(SOLICITADA)
+  error            String?
+  solicitadaPorId  String?
+  creadoEn         DateTime      @default(now())
+  actualizadoEn    DateTime      @updatedAt
+
+  @@index([tenantId, estado])
+  @@index([reservaId])
+  @@index([trasladoId])
 }

@@ -25,7 +25,7 @@ export default async function ClientePage({ params }: { params: Promise<{ id: st
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-4 font-semibold">Datos</h2>
-          {escribir ? <Formulario accion={guardarCliente.bind(null, c.id)}><CamposCliente v={c} /></Formulario>
+          {escribir ? <Formulario accion={guardarCliente.bind(null, c.id)}><CamposCliente v={c} conFiscal={s.modulos.includes("facturacion") && puede(s.rol, "facturacion:ver")} /></Formulario>
             : <p className="text-sm">{c.telefono} · {c.email}</p>}
         </Card>
         <Card>

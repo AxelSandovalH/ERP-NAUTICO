@@ -24,12 +24,13 @@ describe("registro de módulos", () => {
     expect(modulosActivos(["flota", "ingresos"]).sort()).toEqual(["flota", "nucleo"]); // sin reservas se descarta, y con él cuentas
     expect(MODULOS.cuentas.implicito).toBe(true);
   });
-  it("los módulos 'próximamente' nunca se activan, aunque el plan los incluya", () => {
-    for (const id of ["facturacion"] as ModuloId[]) {
-      expect(esConstruido(id)).toBe(false);
-      expect(modulosActivos(["flota", id])).not.toContain(id);
-      expect(MODULOS[id].nav).toEqual([]); // sin enlaces muertos
+  it("un módulo marcado «próximamente» nunca se activa y no tiene enlaces muertos (hoy ya no queda ninguno)", () => {
+    for (const m of Object.values(MODULOS).filter((x) => x.proximamente)) {
+      expect(esConstruido(m.id)).toBe(false);
+      expect(modulosActivos(["flota", m.id])).not.toContain(m.id);
+      expect(m.nav).toEqual([]);
     }
+    expect(Object.values(MODULOS).every((m) => esConstruido(m.id))).toBe(true);
   });
 });
 
@@ -42,6 +43,21 @@ describe("conciliación bancaria", () => {
     expect(MODULOS_POR_PLAN.ENTERPRISE).toContain("conciliacion");
     expect(MODULOS_POR_PLAN.GESTION).not.toContain("conciliacion");
     expect(MODULOS_POR_PLAN.CONTROL).not.toContain("conciliacion");
+  });
+});
+
+describe("facturación", () => {
+  it("es un módulo construido que necesita reservas y viene desde el plan Gestión", () => {
+    expect(esConstruido("facturacion")).toBe(true);
+    expect(modulosActivos(["facturacion"])).not.toContain("facturacion"); // sin reservas no se activa
+    expect(modulosActivos(["flota", "reservas", "facturacion"])).toContain("facturacion");
+    expect(MODULOS_POR_PLAN.CONTROL).not.toContain("facturacion");
+    expect(MODULOS_POR_PLAN.GESTION).toContain("facturacion");
+    expect(MODULOS.facturacion.nav[0].href).toBe("/facturacion");
+  });
+  it("solo administradores y gerentes ven y emiten facturas", () => {
+    for (const rol of ["ADMIN", "GERENTE"] as const) { expect(puede(rol, "facturacion:ver")).toBe(true); expect(puede(rol, "facturacion:emitir")).toBe(true); }
+    for (const rol of ["VENDEDOR", "OPERACIONES"] as const) { expect(puede(rol, "facturacion:ver")).toBe(false); expect(puede(rol, "facturacion:emitir")).toBe(false); }
   });
 });
 

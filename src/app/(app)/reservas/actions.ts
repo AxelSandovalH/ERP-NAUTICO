@@ -2,6 +2,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { errorDeDatosFiscales, normalizarRfc } from "@/lib/facturacion/impuestos";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { esIso, pesosACentavos } from "@/lib/fechas";
@@ -172,6 +173,9 @@ const clienteSchema = z.object({
   email: z.string().trim().max(120).optional(),
   telefono: z.string().trim().max(40).optional(),
   notas: z.string().trim().max(2000).optional(),
+  // Datos fiscales (solo llegan si el módulo de facturación está activo)
+  rfc: z.string().trim().max(20).optional(), razonSocialFiscal: z.string().trim().max(250).optional(), regimenFiscal: z.string().trim().max(3).optional(),
+  codigoPostalFiscal: z.string().trim().max(5).optional(), usoCfdi: z.string().trim().max(3).optional(), correoFactura: z.string().trim().max(120).optional(),
 });
 
 export async function guardarCliente(id: string | null, _: EstadoForm, fd: FormData): Promise<EstadoForm> {
@@ -179,7 +183,18 @@ export async function guardarCliente(id: string | null, _: EstadoForm, fd: FormD
   const p = clienteSchema.safeParse(Object.fromEntries(fd));
   if (!p.success) return { error: p.error.issues[0].message };
   if (p.data.email && !z.string().email().safeParse(p.data.email).success) return { error: "Correo inválido." };
-  const data = { nombre: p.data.nombre, email: p.data.email || null, telefono: p.data.telefono || null, notas: p.data.notas || null };
+  const fiscal = ["rfc", "razonSocialFiscal", "regimenFiscal", "codigoPostalFiscal", "usoCfdi", "correoFactura"] as const;
+  const conFiscal = fiscal.some((k) => fd.has(k));
+  const errFiscal = conFiscal ? errorDeDatosFiscales(p.data) : null;
+  if (errFiscal) return { error: errFiscal };
+  const data = {
+    nombre: p.data.nombre, email: p.data.email || null, telefono: p.data.telefono || null, notas: p.data.notas || null,
+    // Solo se tocan los datos fiscales si el formulario los trajo: guardar un cliente sin el módulo no los borra
+    ...(conFiscal ? {
+      rfc: p.data.rfc ? normalizarRfc(p.data.rfc) : null, razonSocialFiscal: p.data.razonSocialFiscal || null, regimenFiscal: p.data.regimenFiscal || null,
+      codigoPostalFiscal: p.data.codigoPostalFiscal || null, usoCfdi: p.data.usoCfdi ? p.data.usoCfdi.toUpperCase() : null, correoFactura: p.data.correoFactura || null,
+    } : {}),
+  };
   if (id) {
     const r = await withTenant(s.tenantId, (tx) => tx.cliente.updateMany({ where: { id }, data }));
     if (r.count === 0) return { error: "Cliente no encontrado." };

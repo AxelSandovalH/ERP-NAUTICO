@@ -7,7 +7,8 @@ import { puede } from "@/modules/permisos";
 import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_TRASLADO, TIPOS_TRASLADO, TONO_TRASLADO } from "@/lib/transporte/horario";
 import { resumenTraslado } from "@/lib/transporte/servicio";
-import { Campo, Card, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from "@/components/ui";
+import { ESTADOS_FACTURA, TONO_FACTURA } from "@/lib/facturacion/impuestos";
+import { BotonLink, Campo, Card, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { CamposTraslado } from "@/components/transporte/form-traslado";
@@ -19,6 +20,7 @@ export default async function TrasladoPage({ params }: { params: Promise<{ id: s
   const s = await requireModulo("transporte", "transporte:ver");
   const gestionar = puede(s.rol, "transporte:gestionar"), conFinanzas = puede(s.rol, "transporte:finanzas");
   const conIngresos = s.modulos.includes("ingresos"), conGastos = s.modulos.includes("gastos");
+  const conFacturacion = s.modulos.includes("facturacion") && puede(s.rol, "facturacion:ver");
   const d = await withTenant(s.tenantId, async (tx) => {
     const r = await resumenTraslado(tx, id);
     if (!r) return null;
@@ -28,6 +30,7 @@ export default async function TrasladoPage({ params }: { params: Promise<{ id: s
       choferes: gestionar ? await tx.empleado.findMany({ where: { activo: true }, orderBy: { nombre: "asc" } }) : [],
       cuentas: conFinanzas ? await tx.cuenta.findMany({ where: { activa: true }, orderBy: { nombre: "asc" } }) : [],
       catIngreso: conFinanzas && conIngresos ? await tx.categoria.findMany({ where: { tipo: "INGRESO", activa: true }, orderBy: { nombre: "asc" } }) : [],
+      facturas: conFacturacion ? await tx.facturaEmitida.findMany({ where: { trasladoId: id }, orderBy: { creadoEn: "desc" } }) : [],
       catGasto: conFinanzas && conGastos ? await tx.categoria.findMany({ where: { tipo: "GASTO", activa: true }, orderBy: { nombre: "asc" } }) : [],
     };
   });
@@ -105,6 +108,20 @@ export default async function TrasladoPage({ params }: { params: Promise<{ id: s
                     <Campo etiqueta="Categoría del ingreso"><Select name="categoriaId" defaultValue=""><option value="">Sin categoría</option>{d.catIngreso.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}</Select></Campo>
                   </div>
                 </Formulario>
+              )}
+            </Card>
+          )}
+
+          {conFacturacion && (
+            <Card>
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h2 className="font-semibold">Factura</h2>
+                {puede(s.rol, "facturacion:emitir") && t.ingresoId && !d.facturas.some((f) => f.estado !== "CANCELADA") && <BotonLink href={`/facturacion/nueva?traslado=${t.id}`} variante="suave">Facturar</BotonLink>}
+              </div>
+              {d.facturas.length === 0 ? <p className="text-sm text-muted">{t.ingresoId ? "Cobrado y sin factura." : "Se puede facturar cuando esté cobrado."}</p> : (
+                <ul className="space-y-2 text-sm">
+                  {d.facturas.map((f) => <li key={f.id} className="flex items-center justify-between gap-2"><Link href={`/facturacion/${f.id}`} className="text-brand">{aIso(f.creadoEn)} · {dinero(f.totalCentavos, s.moneda)}</Link><Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia></li>)}
+                </ul>
               )}
             </Card>
           )}

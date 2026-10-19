@@ -65,9 +65,20 @@ Una organización de Procura por empresa de FleetNautic, con su propia llave. Fl
 - Webhooks con firma verificada y reintentos idempotentes.
 - e.firma/CSD: jamás pasan por FleetNautic.
 
-## Decisiones abiertas (bloquean la Etapa 1)
+## Decisiones
 
-1. **IVA**: ¿el total de la reserva incluye IVA (16 %) o se suma? Define cómo se arma la venta.
-2. **Costos**: ¿quién paga el plan Empresa de cada organización en Procura y los timbres? (hoy $4,990 + IVA al mes, timbres aparte).
-3. **Alta fiscal**: cada empresa debe dar de alta su emisor y su CSD en Fiscalapi antes de poder timbrar. ¿Quién guía ese trámite?
-4. **Ambiente**: construimos y probamos contra el ambiente de **pruebas** de Fiscalapi; producción solo con tu aprobación.
+1. **IVA**: el precio de FleetNautic **no incluye IVA**; se suma 16 % al facturar (venta de una línea con el subtotal y `tax_rate: 0.16`). Decidido.
+2. **Costos**: Procura cobra sus planes y timbres con 16 % de IVA y 4 % de cargo de servicio en Stripe. Quién absorbe ese costo por empresa sigue abierto.
+3. **Alta fiscal**: cada empresa debe dar de alta su emisor y su CSD en Fiscalapi antes de poder timbrar. Quién guía ese trámite sigue abierto.
+4. **Ambiente**: se construye y prueba contra el ambiente de **pruebas** de Fiscalapi; producción solo con aprobación.
+
+## Estado de la Etapa 1 (FleetNautic)
+
+Hecho, probado contra una Procura simulada (no contra la real):
+- Modelos `ConexionProcura` (llave cifrada), datos fiscales en `Cliente` y `FacturaEmitida` (una sola factura viva por reserva o traslado, restricción en la base de datos).
+- Cliente HTTP de Procura con errores traducidos a mensajes seguros; cifrado AES-256-GCM de llaves.
+- Flujo de emisión idempotente: el intento se reserva antes de llamar a Procura; la venta se identifica por referencia `fn:<id>`; un CFDI ya timbrado cuya respuesta se perdió se recupera sin timbrar de nuevo.
+- Pantallas: Facturación (por facturar y emitidas), Facturar, detalle (descargas, consultar estado, reintentar, cancelar) y tarjeta «Factura» en reservas y traslados.
+- `npm run procura:conectar` conecta una empresa (la llave se lee del entorno, nunca como argumento).
+
+Pendiente de Procura (prompt de la Etapa 1): `external_ref` y `folio` en `POST /sales`, emisión repetida sin error ambiguo, respuesta de emisión estable, webhooks `cfdi.*`, rol de integración y errores documentados. Mientras tanto FleetNautic usa los endpoints actuales; la búsqueda por referencia solo se acepta si Procura devuelve exactamente esa referencia.
