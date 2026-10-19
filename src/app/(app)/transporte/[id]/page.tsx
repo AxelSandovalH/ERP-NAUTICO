@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
-import { aIso, dinero, fechaLarga, hoyIso } from "@/lib/fechas";
+import { aIso, dinero, fechaLarga, hoyIso, diaLocal } from "@/lib/fechas";
 import { puede } from "@/modules/permisos";
 import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_TRASLADO, TIPOS_TRASLADO, TONO_TRASLADO } from "@/lib/transporte/horario";
@@ -120,7 +120,7 @@ export default async function TrasladoPage({ params }: { params: Promise<{ id: s
               </div>
               {d.facturas.length === 0 ? <p className="text-sm text-muted">{t.ingresoId ? "Cobrado y sin factura." : "Se puede facturar cuando esté cobrado."}</p> : (
                 <ul className="space-y-2 text-sm">
-                  {d.facturas.map((f) => <li key={f.id} className="flex items-center justify-between gap-2"><Link href={`/facturacion/${f.id}`} className="text-brand">{aIso(f.creadoEn)} · {dinero(f.totalCentavos, s.moneda)}</Link><Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia></li>)}
+                  {d.facturas.map((f) => <li key={f.id} className="flex items-center justify-between gap-2"><Link href={`/facturacion/${f.id}`} className="text-brand">{diaLocal(f.creadoEn, s.zonaHoraria)} · {dinero(f.totalCentavos, s.moneda)}</Link><Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia></li>)}
                 </ul>
               )}
             </Card>

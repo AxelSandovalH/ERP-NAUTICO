@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
-import { aIso, dinero, fechaLarga } from "@/lib/fechas";
+import { aIso, dinero, fechaLarga, diaLocal } from "@/lib/fechas";
 import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_RESERVA, METODOS_PAGO, ORIGENES, TONO_RESERVA } from "@/lib/etiquetas";
 import { BotonLink, Card, Campo, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from "@/components/ui";
@@ -162,7 +162,7 @@ export default async function ReservaPage({ params, searchParams }: { params: Pr
             </div>
             {facturas.length === 0 ? <p className="text-sm text-muted">{saldo <= 0 && r.totalCentavos > 0 ? "Cobrada y sin factura." : "Se puede facturar cuando esté cobrada por completo."}</p> : (
               <ul className="space-y-2 text-sm">
-                {facturas.map((f) => <li key={f.id} className="flex items-center justify-between gap-2"><Link href={`/facturacion/${f.id}`} className="text-brand">{aIso(f.creadoEn)} · {dinero(f.totalCentavos, s.moneda)}</Link><Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia></li>)}
+                {facturas.map((f) => <li key={f.id} className="flex items-center justify-between gap-2"><Link href={`/facturacion/${f.id}`} className="text-brand">{diaLocal(f.creadoEn, s.zonaHoraria)} · {dinero(f.totalCentavos, s.moneda)}</Link><Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia></li>)}
               </ul>
             )}
           </Card>

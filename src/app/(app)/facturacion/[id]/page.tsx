@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
-import { aIso, dinero } from "@/lib/fechas";
+import { aIso, dinero, diaLocal } from "@/lib/fechas";
 import { puede } from "@/modules/permisos";
 import { ESTADOS_FACTURA, FORMAS_PAGO_SAT, MOTIVOS_CANCELACION, TONO_FACTURA, type Receptor } from "@/lib/facturacion/impuestos";
 import { BotonLink, Campo, Card, Input, Insignia, PageHeader, Select } from "@/components/ui";
@@ -25,7 +25,7 @@ export default async function FacturaPage({ params }: { params: Promise<{ id: st
   return (
     <>
       <Link href="/facturacion" className="mb-3 inline-block text-sm text-muted hover:text-foreground">← Facturación</Link>
-      <PageHeader titulo={`Factura · ${f.cliente.nombre}`} sub={`${origen.texto} · solicitada el ${aIso(f.creadoEn)}`} acciones={<Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia>} />
+      <PageHeader titulo={`Factura · ${f.cliente.nombre}`} sub={`${origen.texto} · solicitada el ${diaLocal(f.creadoEn, s.zonaHoraria)}`} acciones={<Insignia tono={TONO_FACTURA[f.estado]}>{ESTADOS_FACTURA[f.estado]}</Insignia>} />
 
       {f.estado === "ERROR" && f.error && <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-200">{f.error}</p>}
       {f.estado === "CANCELANDO" && <p role="status" className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950 dark:text-amber-200">La cancelación está en proceso: el SAT debe confirmarla y el cliente puede rechazarla. Consulta el estado en unos minutos.</p>}

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
-import { aDate, aIso, dinero, hoyIso, sumarDias } from "@/lib/fechas";
+import { aDate, aIso, dinero, hoyIso, sumarDias, diaLocal } from "@/lib/fechas";
 import { puede } from "@/modules/permisos";
 import { ESTADOS_FACTURA, TONO_FACTURA, desglosarIva } from "@/lib/facturacion/impuestos";
 import { BotonLink, Card, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
@@ -76,7 +76,7 @@ export default async function FacturacionPage({ searchParams }: { searchParams: 
             <tbody>
               {d.facturas.map((f) => (
                 <tr key={f.id} className="hover:bg-brand-soft/50">
-                  <Td className="whitespace-nowrap"><Link href={`/facturacion/${f.id}`} className="text-brand">{aIso(f.creadoEn)}</Link></Td>
+                  <Td className="whitespace-nowrap"><Link href={`/facturacion/${f.id}`} className="text-brand">{diaLocal(f.creadoEn, s.zonaHoraria)}</Link></Td>
                   <Td>{f.reserva ? `Reserva #${f.reserva.folio}` : `Traslado · Reserva #${f.traslado?.reserva.folio}`}</Td>
                   <Td>{f.cliente.nombre}</Td>
                   <Td className="whitespace-nowrap">{dinero(f.totalCentavos, s.moneda)}</Td>
