@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import type { CSSProperties } from "react";
 import {
@@ -98,8 +99,11 @@ export function Landing() {
 
       <main>
         {/* Portada */}
-        <section className="relative overflow-hidden bg-navy bg-[radial-gradient(70%_60%_at_50%_0%,rgba(0,183,189,0.28),transparent)] text-white">
-          <div className="mx-auto max-w-6xl px-4 pb-20 pt-16 text-center md:px-8 md:pb-28 md:pt-24">
+        <section className="relative overflow-hidden bg-navy text-white">
+          <Image src="/media/bahia-hero.jpg" alt="" fill priority sizes="100vw" className="object-cover opacity-45" />
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(70%_60%_at_50%_0%,rgba(0,183,189,0.28),transparent)]" />
+          <div aria-hidden className="absolute inset-0 bg-gradient-to-b from-navy/30 via-navy/55 to-navy" />
+          <div className="relative mx-auto max-w-6xl px-4 pb-20 pt-16 text-center md:px-8 md:pb-28 md:pt-24">
             <p className="mx-auto mb-5 inline-block rounded-full border border-pato/40 bg-pato/10 px-4 py-1 text-xs font-medium tracking-wide text-pato">Para operadores de charters, tours y renta de embarcaciones</p>
             <h1 className="mx-auto max-w-3xl text-4xl font-semibold leading-tight tracking-tight md:text-6xl">Tu operación náutica, <span className="text-pato">bajo control</span></h1>
             <p className="mx-auto mt-6 max-w-2xl text-base text-slate-300 md:text-lg">Reservas, tripulación, finanzas, inventario, transporte y facturación en un solo sistema, hecho para quienes viven de la flota.</p>
@@ -170,6 +174,31 @@ export function Landing() {
                 <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-navy text-pato"><I className="h-5 w-5" /></span>
                 <h3 className="mt-4 text-lg font-semibold">{t}</h3>
                 <p className="mt-1 text-sm text-muted">{x}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* Del muelle al reporte */}
+        <section aria-label="Galería" className="bg-navy text-white">
+          <div className="relative h-72 overflow-hidden md:h-96">
+            <video autoPlay muted loop playsInline preload="metadata" poster="/media/playa.jpg" aria-hidden className="absolute inset-0 h-full w-full object-cover opacity-60">
+              <source src="/media/playa.mp4" type="video/mp4" />
+            </video>
+            <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-navy via-navy/30 to-navy/60" />
+            <div className="relative flex h-full flex-col items-center justify-center px-4 text-center">
+              <h2 className="max-w-2xl text-3xl font-semibold tracking-tight md:text-5xl">Del muelle al reporte</h2>
+              <p className="mt-3 max-w-xl text-slate-200">Tu operación empieza en el mar y termina en tus números. FleetNautic cubre todo el camino.</p>
+            </div>
+          </div>
+          <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2 px-4 pb-16 pt-2 md:gap-4 md:px-8">
+            {[
+              { src: "/media/marina-atardecer.jpg", alt: "Veleros en la marina al atardecer" },
+              { src: "/media/bahia-barcos.jpg", alt: "Embarcaciones en la bahía" },
+              { src: "/media/arco-cabo.jpg", alt: "Costa rocosa y embarcaciones" },
+            ].map((f) => (
+              <div key={f.src} className="relative aspect-[3/4] overflow-hidden rounded-xl md:rounded-2xl">
+                <Image src={f.src} alt={f.alt} fill sizes="(min-width:1152px) 370px, 33vw" className="object-cover" />
               </div>
             ))}
           </div>
