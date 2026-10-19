@@ -6,9 +6,15 @@
   --surface: #ffffff;
   --line: #e2e8f0;
   --muted: #64748b;
-  --brand: #0369a1;
+  /* Marca: azul navy (el bote del logo) y azul pato (su ola). El pato oscurecido sirve de acento sobre fondo claro (contraste 4.9:1 con blanco). */
+  --navy: #0b132b;
+  --pato: #00b7bd;
+  --brand: #0e7c86;
   --brand-fg: #ffffff;
-  --brand-soft: #e0f2fe;
+  --brand-soft: #e3f6f7;
+  /* Barra lateral */
+  --rail: #0b132b;
+  --rail-texto: #cbd5e1;
   --logo-bote: #0B132B;
   --logo-ola: #00B7BD;
   /* Gráficas: categorías validadas con scripts/validate_palette.js contra la superficie de la app */
@@ -25,9 +31,10 @@
     --surface: #111a2e;
     --line: #22304a;
     --muted: #94a3b8;
-    --brand: #38bdf8;
+    --brand: #2dd4db;
     --brand-fg: #04121f;
-    --brand-soft: #0c2a40;
+    --brand-soft: #0a2a33;
+    --rail: #070d1f;
     --logo-bote: #E2E8F0;
     --serie-1: #3987e5;
     --serie-2: #d95926;
@@ -45,6 +52,10 @@
   --color-brand: var(--brand);
   --color-brand-fg: var(--brand-fg);
   --color-brand-soft: var(--brand-soft);
+  --color-rail: var(--rail);
+  --color-rail-texto: var(--rail-texto);
+  --color-pato: var(--pato);
+  --color-navy: var(--navy);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
