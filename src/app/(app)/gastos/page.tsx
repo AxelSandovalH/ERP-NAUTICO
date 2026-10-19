@@ -8,7 +8,7 @@ import { asegurarCategoriasBase } from "@/lib/finanzas/servicio";
 import { ORIGENES_MOVIMIENTO } from "@/lib/etiquetas";
 import { BotonLink, Card, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Gastos · ERP Náutico" };
+export const metadata = { title: "Gastos · FleetNautic" };
 
 type SP = { mes?: string; cat?: string; cuenta?: string; emb?: string; q?: string };
 

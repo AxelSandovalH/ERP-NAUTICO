@@ -219,7 +219,9 @@ export const esConstruido = (id: ModuloId) => !MODULOS[id].proximamente;
 
 /** Lo que de verdad ve una empresa: lo que su plan permite ∩ lo que tiene activado, ya con dependencias,
  *  y sin nada más que el núcleo si su suscripción terminó. */
-export function modulosEfectivos(plan: Plan, guardados: string[], estadoSuscripcion?: "NINGUNA" | "ACTIVA" | "PAGO_PENDIENTE" | "CANCELADA"): ModuloId[] {
+export function modulosEfectivos(plan: Plan, guardados: string[], estadoSuscripcion?: "NINGUNA" | "ACTIVA" | "PAGO_PENDIENTE" | "CANCELADA", pruebaVencida = false): ModuloId[] {
+  // La prueba de 7 días terminó y no contrató: solo queda el núcleo (panel y configuración) para elegir un plan
+  if (pruebaVencida) return ["nucleo"];
   // Suscripción terminada o sin poder cobrarse: solo queda el núcleo (panel y configuración) para reactivarla.
   // PAGO_PENDIENTE conserva todo: Stripe reintenta el cobro y se avisa con un banner.
   if (estadoSuscripcion === "CANCELADA") return ["nucleo"];

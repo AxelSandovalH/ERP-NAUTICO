@@ -5,7 +5,7 @@ import { Card, Campo, Input } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { crearEmpresaOnboarding, salir } from "../actions";
 
-export const metadata = { title: "Crea tu empresa · ERP Náutico" };
+export const metadata = { title: "Crea tu empresa · FleetNautic" };
 
 export default async function OnboardingPage() {
   const supabase = await createClient();
@@ -16,7 +16,7 @@ export default async function OnboardingPage() {
   return (
     <Card>
       <h1 className="mb-1 text-xl font-semibold">Un último paso</h1>
-      <p className="mb-4 text-sm text-muted">Entraste como <b>{data.user.email}</b>. Aún no tienes una empresa en ERP Náutico: créala para empezar la prueba con todos los módulos.</p>
+      <p className="mb-4 text-sm text-muted">Entraste como <b>{data.user.email}</b>. Aún no tienes una empresa en FleetNautic: créala para empezar la prueba con todos los módulos.</p>
       <Formulario accion={crearEmpresaOnboarding} enviar="Crear mi empresa">
         <Campo etiqueta="Nombre de la empresa"><Input name="empresa" required autoFocus /></Campo>
       </Formulario>

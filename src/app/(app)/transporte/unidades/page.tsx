@@ -7,7 +7,7 @@ import { BotonAccion } from "@/components/boton-accion";
 import { SubnavTransporte } from "@/components/transporte/subnav";
 import { alternarUnidadAccion, guardarUnidadAccion } from "../actions";
 
-export const metadata = { title: "Unidades · Transporte · ERP Náutico" };
+export const metadata = { title: "Unidades · Transporte · FleetNautic" };
 
 function CamposUnidad({ v }: { v?: { nombre: string; placas: string | null; capacidad: number; notas: string | null } }) {
   return (

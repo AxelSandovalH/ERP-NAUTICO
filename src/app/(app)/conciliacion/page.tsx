@@ -6,7 +6,7 @@ import { saldosPorCuenta } from "@/lib/finanzas/servicio";
 import { TIPOS_CUENTA } from "@/lib/etiquetas";
 import { Card, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Conciliación bancaria · ERP Náutico" };
+export const metadata = { title: "Conciliación bancaria · FleetNautic" };
 
 export default async function ConciliacionPage() {
   const s = await requireModulo("conciliacion", "conciliacion:administrar");

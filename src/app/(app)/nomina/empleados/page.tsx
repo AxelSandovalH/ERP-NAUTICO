@@ -5,7 +5,7 @@ import { dinero } from "@/lib/fechas";
 import { ESQUEMAS_PAGO, PERIODICIDADES } from "@/lib/etiquetas";
 import { BotonLink, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Empleados · ERP Náutico" };
+export const metadata = { title: "Empleados · FleetNautic" };
 
 export default async function EmpleadosPage() {
   const s = await requireModulo("nomina", "nomina:administrar");

@@ -1,6 +1,6 @@
 @AGENTS.md
 
-# ERP Náutico — reglas del proyecto
+# FleetNautic — reglas del proyecto
 
 - Next.js 16 con APIs asíncronas (`cookies()`, `params`, `searchParams` son Promises). `cacheComponents` está desactivado a propósito.
 - Tablas operativas: SIEMPRE vía `withTenant()`; nunca `prisma.<modelo>` directo salvo `Tenant`/`Usuario`. Tablas nuevas necesitan `tenantId` + política RLS en su migración.

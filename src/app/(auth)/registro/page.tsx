@@ -6,7 +6,7 @@ import { getSesion } from "@/lib/auth/session";
 import { BotonGoogle } from "@/components/boton-google";
 import { registrar } from "../actions";
 
-export const metadata = { title: "Crear cuenta · ERP Náutico" };
+export const metadata = { title: "Crear cuenta · FleetNautic" };
 
 export default async function RegistroPage() {
   if (await getSesion()) redirect("/dashboard");

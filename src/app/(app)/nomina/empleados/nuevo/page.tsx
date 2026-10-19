@@ -6,7 +6,7 @@ import { Formulario } from "@/components/formulario";
 import { CamposEmpleado } from "@/components/form-empleado";
 import { guardarEmpleado } from "../../actions";
 
-export const metadata = { title: "Nuevo empleado · ERP Náutico" };
+export const metadata = { title: "Nuevo empleado · FleetNautic" };
 
 export default async function NuevoEmpleadoPage() {
   const s = await requireModulo("nomina", "nomina:administrar");

@@ -12,7 +12,7 @@ import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { cancelarIngresoAccion, confirmarIngresoAccion, sincronizarPagosAccion } from "./actions";
 
-export const metadata = { title: "Ingresos · ERP Náutico" };
+export const metadata = { title: "Ingresos · FleetNautic" };
 
 type SP = { mes?: string; cuenta?: string; sinConfirmar?: string };
 

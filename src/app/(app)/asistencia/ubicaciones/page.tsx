@@ -7,7 +7,7 @@ import { BotonAccion } from "@/components/boton-accion";
 import { CamposUbicacion } from "@/components/campos-ubicacion";
 import { alternarUbicacion, eliminarUbicacion, guardarUbicacion } from "../actions";
 
-export const metadata = { title: "Ubicaciones de asistencia · ERP Náutico" };
+export const metadata = { title: "Ubicaciones de asistencia · FleetNautic" };
 
 export default async function UbicacionesPage() {
   const s = await requireModulo("asistencia", "asistencia:administrar");

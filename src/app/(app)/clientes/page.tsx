@@ -4,7 +4,7 @@ import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
 import { BotonLink, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Clientes · ERP Náutico" };
+export const metadata = { title: "Clientes · FleetNautic" };
 
 export default async function ClientesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { q } = await searchParams;

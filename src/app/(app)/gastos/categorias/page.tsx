@@ -7,7 +7,7 @@ import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { alternarCategoriaAccion, crearCategoriaAccion } from "../actions";
 
-export const metadata = { title: "Categorías · ERP Náutico" };
+export const metadata = { title: "Categorías · FleetNautic" };
 
 export default async function CategoriasPage() {
   const s = await requireModulo("gastos", "gastos:administrar");

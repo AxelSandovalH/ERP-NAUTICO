@@ -46,6 +46,19 @@ describe("conciliación bancaria", () => {
   });
 });
 
+describe("prueba gratuita", () => {
+  it("con la prueba vencida solo queda el núcleo; vigente, todo lo del plan Prueba", () => {
+    const todos = MODULOS_POR_PLAN.PRUEBA;
+    expect(modulosEfectivos("PRUEBA", todos, "NINGUNA", true)).toEqual(["nucleo"]);
+    expect(modulosEfectivos("PRUEBA", todos, "NINGUNA", false)).toContain("reservas");
+    expect(modulosEfectivos("PRUEBA", todos)).toContain("facturacion");
+  });
+  it("un plan de pago no se ve afectado por la bandera de prueba vencida", () => {
+    // La bandera solo se calcula para el plan Prueba (pruebaVencida), pero aun si llegara en true manda: es lo que la sesión ya evita
+    expect(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE, "ACTIVA", false)).toContain("conciliacion");
+  });
+});
+
 describe("facturación", () => {
   it("es un módulo construido que necesita reservas y viene desde el plan Gestión", () => {
     expect(esConstruido("facturacion")).toBe(true);

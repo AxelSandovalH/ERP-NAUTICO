@@ -4,7 +4,7 @@ import { Formulario } from "@/components/formulario";
 import { CamposEmbarcacion } from "@/components/form-embarcacion";
 import { crearEmbarcacion } from "../actions";
 
-export const metadata = { title: "Nueva embarcación · ERP Náutico" };
+export const metadata = { title: "Nueva embarcación · FleetNautic" };
 
 export default async function NuevaEmbarcacionPage() {
   await requireModulo("flota", "flota:escribir");

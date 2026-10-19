@@ -12,7 +12,7 @@ import { generarNominaAccion } from "./actions";
 // Desde aquí se lanzan acciones masivas (generar nómina / recalcular comisiones)
 export const maxDuration = 120;
 
-export const metadata = { title: "Nómina · ERP Náutico" };
+export const metadata = { title: "Nómina · FleetNautic" };
 
 export default async function NominaPage({ searchParams }: { searchParams: Promise<{ p?: string; fecha?: string }> }) {
   const sp = await searchParams;

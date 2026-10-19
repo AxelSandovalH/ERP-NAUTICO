@@ -11,7 +11,7 @@ import { Formulario } from "@/components/formulario";
 import { SubnavFacturacion } from "@/components/facturacion/subnav";
 import { ligarRecibidasAccion } from "../actions";
 
-export const metadata = { title: "Facturas recibidas · ERP Náutico" };
+export const metadata = { title: "Facturas recibidas · FleetNautic" };
 export const maxDuration = 60;
 const DIAS_MAX = 180;
 

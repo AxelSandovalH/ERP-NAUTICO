@@ -9,7 +9,7 @@ import { Formulario } from "@/components/formulario";
 import { SubnavInventario } from "@/components/inventario/subnav";
 import { conteoAccion } from "../actions";
 
-export const metadata = { title: "Conteo físico · Inventario · ERP Náutico" };
+export const metadata = { title: "Conteo físico · Inventario · FleetNautic" };
 
 export default async function ConteoPage({ searchParams }: { searchParams: Promise<{ ub?: string }> }) {
   const q = await searchParams;

@@ -10,7 +10,7 @@ import { BotonAnular } from "@/components/inventario/boton-anular";
 import { SubnavInventario } from "@/components/inventario/subnav";
 import { anularAccion, compraAccion, consumoAccion, mermaAccion, traspasoAccion } from "../actions";
 
-export const metadata = { title: "Movimientos · Inventario · ERP Náutico" };
+export const metadata = { title: "Movimientos · Inventario · FleetNautic" };
 
 const TIPOS = {
   COMPRA: { texto: "Compra", tono: "verde" }, CONSUMO: { texto: "Consumo", tono: "azul" }, MERMA: { texto: "Merma", tono: "rojo" },

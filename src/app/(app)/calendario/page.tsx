@@ -5,7 +5,7 @@ import { esIso, hoyIso, mesDe, sumarDias, sumarMeses } from "@/lib/fechas";
 import { fetchEventos } from "@/lib/calendario/eventos";
 import { CalendarioOperativo } from "@/components/calendario/calendario-operativo";
 
-export const metadata = { title: "Calendario operativo · ERP Náutico" };
+export const metadata = { title: "Calendario operativo · FleetNautic" };
 
 export default async function CalendarioPage({ searchParams }: { searchParams: Promise<{ vista?: string; fecha?: string }> }) {
   const sp = await searchParams;

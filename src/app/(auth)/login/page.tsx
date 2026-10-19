@@ -6,7 +6,7 @@ import { getSesion } from "@/lib/auth/session";
 import { BotonGoogle } from "@/components/boton-google";
 import { login } from "../actions";
 
-export const metadata = { title: "Iniciar sesión · ERP Náutico" };
+export const metadata = { title: "Iniciar sesión · FleetNautic" };
 
 const AVISOS: Record<string, string> = {
   confirmacion: "El enlace de confirmación no es válido o expiró. Inicia sesión o pide uno nuevo.",

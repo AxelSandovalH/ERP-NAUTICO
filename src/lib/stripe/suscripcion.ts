@@ -9,6 +9,13 @@ export const LOOKUP_KEYS = {
   ENTERPRISE: "fleetnautic_enterprise_mensual",
 } as const satisfies Record<Exclude<Plan, "PRUEBA">, string>;
 
+/** El cargo por servicio de pago es un segundo concepto mensual de la suscripción, con su propio precio por plan. */
+export const LOOKUP_KEYS_CARGO = {
+  CONTROL: "fleetnautic_control_cargo",
+  GESTION: "fleetnautic_gestion_cargo",
+  ENTERPRISE: "fleetnautic_enterprise_cargo",
+} as const satisfies Record<Exclude<Plan, "PRUEBA">, string>;
+
 export type PlanPago = keyof typeof LOOKUP_KEYS;
 export const esPlanPago = (p: string): p is PlanPago => p in LOOKUP_KEYS;
 export const lookupKeyDe = (plan: PlanPago) => LOOKUP_KEYS[plan];
@@ -57,4 +64,16 @@ export function aplicaALaEmpresa(e: EstadoEmpresa, subId: string, nuevo: EstadoS
   const viva = e.estadoSuscripcion === "ACTIVA" || e.estadoSuscripcion === "PAGO_PENDIENTE";
   if (e.stripeSubscriptionId && e.stripeSubscriptionId !== subId && viva && nuevo === "CANCELADA") return false;
   return true;
+}
+
+/** Cargo por servicio de pago (4 % del precio del plan) e IVA (16 % sobre el precio y el cargo), como cobra Procura. */
+export const TASA_CARGO = 0.04;
+export const TASA_IVA_SUSCRIPCION = 0.16;
+
+/** Lo que paga una empresa al mes por un plan de `precioMxn` pesos: precio + cargo + IVA, en centavos enteros. */
+export function desglosePlan(precioMxn: number) {
+  const precio = Math.round(precioMxn * 100);
+  const cargo = Math.round(precio * TASA_CARGO);
+  const iva = Math.round((precio + cargo) * TASA_IVA_SUSCRIPCION);
+  return { precioCentavos: precio, cargoCentavos: cargo, ivaCentavos: iva, totalCentavos: precio + cargo + iva };
 }

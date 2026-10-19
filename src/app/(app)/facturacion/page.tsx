@@ -7,7 +7,7 @@ import { ESTADOS_FACTURA, TONO_FACTURA, desglosarIva } from "@/lib/facturacion/i
 import { SubnavFacturacion } from "@/components/facturacion/subnav";
 import { BotonLink, Card, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Facturación · ERP Náutico" };
+export const metadata = { title: "Facturación · FleetNautic" };
 const VIVAS = ["SOLICITADA", "TIMBRADA", "CANCELANDO"];
 
 export default async function FacturacionPage({ searchParams }: { searchParams: Promise<{ estado?: string }> }) {

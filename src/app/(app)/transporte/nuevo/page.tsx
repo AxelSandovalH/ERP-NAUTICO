@@ -8,7 +8,7 @@ import { CamposTraslado } from "@/components/transporte/form-traslado";
 import { SubnavTransporte } from "@/components/transporte/subnav";
 import { guardarTrasladoAccion } from "../actions";
 
-export const metadata = { title: "Nuevo traslado · ERP Náutico" };
+export const metadata = { title: "Nuevo traslado · FleetNautic" };
 
 export default async function NuevoTrasladoPage({ searchParams }: { searchParams: Promise<{ reserva?: string }> }) {
   const q = await searchParams;

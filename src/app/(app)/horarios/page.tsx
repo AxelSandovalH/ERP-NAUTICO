@@ -10,7 +10,7 @@ import { CeldaTurno, type OpcionTurno } from "@/components/horarios/celda-turno"
 import { SubnavHorarios } from "@/components/horarios/subnav";
 import { asignarAccion, copiarSemanaAccion, publicarAccion } from "./actions";
 
-export const metadata = { title: "Horarios · ERP Náutico" };
+export const metadata = { title: "Horarios · FleetNautic" };
 
 export default async function HorariosPage({ searchParams }: { searchParams: Promise<{ semana?: string }> }) {
   const q = await searchParams;

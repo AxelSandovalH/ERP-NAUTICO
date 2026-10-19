@@ -1,12 +1,13 @@
 import type { PrismaClient } from "@prisma/client";
 import type Stripe from "stripe";
-import { aplicaALaEmpresa, resumirSuscripcion, type SuscripcionMin } from "./suscripcion";
+import { aplicaALaEmpresa, planDeLookupKey, resumirSuscripcion, type SuscripcionMin } from "./suscripcion";
 
 type Db = Pick<PrismaClient, "tenant">;
 
 /** De un objeto Subscription de Stripe a lo mínimo que usamos. */
 export function aSuscripcionMin(s: Stripe.Subscription): SuscripcionMin {
-  const item = s.items.data[0];
+  // La suscripción lleva el plan y su cargo por servicio: el plan lo marca el renglón con la clave de un plan, no el primero
+  const item = s.items.data.find((i) => planDeLookupKey(i.price?.lookup_key)) ?? s.items.data[0];
   return {
     id: s.id,
     customerId: typeof s.customer === "string" ? s.customer : s.customer.id,

@@ -6,7 +6,7 @@ import { Card, PageHeader, Vacio } from "@/components/ui";
 import { FormMovimiento } from "@/components/form-movimiento";
 import { registrarIngresoAccion } from "../actions";
 
-export const metadata = { title: "Nuevo ingreso · ERP Náutico" };
+export const metadata = { title: "Nuevo ingreso · FleetNautic" };
 
 export default async function NuevoIngresoPage() {
   const s = await requireModulo("ingresos", "ingresos:administrar");

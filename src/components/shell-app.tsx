@@ -53,7 +53,7 @@ export function ShellApp({ nav, tenantNombre, usuarioNombre, salir, children }: 
         <div className={`flex items-center justify-between px-4 py-3 md:block md:py-5 ${compacto ? "md:px-0 md:text-center" : ""}`}>
           {compacto ? (
             <>
-              <LogoMarca className="mx-auto hidden h-5 w-auto md:block" titulo="ERP Náutico" />
+              <LogoMarca className="mx-auto hidden h-5 w-auto md:block" titulo="FleetNautic" />
               <div className="md:hidden"><Logo /></div>
             </>
           ) : (

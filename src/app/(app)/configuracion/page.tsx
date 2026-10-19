@@ -13,8 +13,9 @@ import { alternarUsuario, crearUsuario, guardarModulos } from "./actions";
 import { abrirPortalAccion, iniciarSuscripcionAccion } from "./suscripcion-actions";
 import { stripeConfigurado } from "@/lib/stripe/cliente";
 import { diaLocal, fechaLarga } from "@/lib/fechas";
+import { TASA_CARGO, TASA_IVA_SUSCRIPCION, desglosePlan } from "@/lib/stripe/suscripcion";
 
-export const metadata = { title: "Configuración · ERP Náutico" };
+export const metadata = { title: "Configuración · FleetNautic" };
 
 export default async function ConfiguracionPage({ searchParams }: { searchParams: Promise<{ pago?: string }> }) {
   const { pago } = await searchParams;
@@ -34,13 +35,13 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
       <section className="mb-8">
         <h2 className="mb-1 font-semibold">Planes</h2>
         <p className="mb-4 text-sm text-muted">
-          {tenant.plan === "PRUEBA" ? "Estás en el periodo de prueba con todos los módulos disponibles." : `Tu plan actual es ${PLANES[tenant.plan].nombre}.`}
+          {tenant.plan === "PRUEBA" ? (s.prueba?.vencida ? "Tu prueba gratuita terminó: tus módulos están pausados hasta que elijas un plan." : "Estás en la prueba gratuita, con todos los módulos disponibles.") : `Tu plan actual es ${PLANES[tenant.plan].nombre}.`}
           {!cobro && " Para cambiar de plan, contacta a FleetNautic."}
         </p>
         <div className="mb-4 rounded-lg border border-line bg-surface px-4 py-3 text-sm">
           <p className="font-medium">Tu suscripción: {tenant.plan === "PRUEBA" ? "Periodo de prueba" : `Plan ${PLANES[tenant.plan].nombre}`}</p>
           <p className="text-muted">
-            {tenant.estadoSuscripcion === "ACTIVA" ? "Activa, cobrada con tarjeta." : tenant.estadoSuscripcion === "PAGO_PENDIENTE" ? "Con pago pendiente." : tenant.estadoSuscripcion === "CANCELADA" ? "Cancelada." : tenant.plan === "PRUEBA" ? "Sin cobro." : "Asignada por FleetNautic, sin cobro."}
+            {tenant.plan === "PRUEBA" && s.prueba ? (s.prueba.vencida ? `Terminó el ${fechaLarga(diaLocal(s.prueba.terminaEn, s.zonaHoraria))}.` : `Termina el ${fechaLarga(diaLocal(s.prueba.terminaEn, s.zonaHoraria))} (${s.prueba.diasRestantes === 1 ? "queda 1 día" : `quedan ${s.prueba.diasRestantes} días`}).`) : tenant.estadoSuscripcion === "ACTIVA" ? "Activa, cobrada con tarjeta." : tenant.estadoSuscripcion === "PAGO_PENDIENTE" ? "Con pago pendiente." : tenant.estadoSuscripcion === "CANCELADA" ? "Cancelada." : tenant.plan === "PRUEBA" ? "Sin cobro." : "Asignada por FleetNautic, sin cobro."}
           </p>
         </div>
         {pago === "ok" && <p role="status" className="mb-4 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700 dark:bg-emerald-950 dark:text-emerald-200">¡Gracias! Estamos confirmando tu pago; tu plan se activa en unos segundos (recarga la página si aún no lo ves).</p>}
@@ -63,7 +64,10 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
                   <h3 className="text-lg font-semibold">{plan.nombre}</h3>
                   {actual && <Insignia tono="azul">Tu plan</Insignia>}
                 </div>
-                <p className="mt-1"><span className="text-2xl font-semibold">{dinero((plan.precioMxnMensual ?? 0) * 100, "MXN")}</span> <span className="text-sm text-muted">MXN / mes</span></p>
+                <p className="mt-1"><span className="text-2xl font-semibold">{dinero((plan.precioMxnMensual ?? 0) * 100, "MXN")}</span> <span className="text-sm text-muted">MXN / mes + IVA</span></p>
+                {(() => { const d = desglosePlan(plan.precioMxnMensual ?? 0); return (
+                  <p className="mt-1 text-xs text-muted">Se suma un cargo por servicio de pago de {TASA_CARGO * 100} % ({dinero(d.cargoCentavos, "MXN")}) y el IVA de {TASA_IVA_SUSCRIPCION * 100} % ({dinero(d.ivaCentavos, "MXN")}): total <strong className="text-foreground">{dinero(d.totalCentavos, "MXN")}</strong> al mes.</p>
+                ); })()}
                 <p className="mt-1 text-sm text-muted">{plan.resumen}</p>
                 {plan.incluye && <p className="mt-3 text-xs font-medium">Incluye todo lo de {PLANES[plan.incluye].nombre}, más:</p>}
                 <ul className="mt-2 space-y-1.5 text-sm">

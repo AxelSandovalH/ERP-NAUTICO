@@ -7,7 +7,7 @@ import { Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 import { Tile } from "@/components/graficas/tile";
 import { SubnavInventario } from "@/components/inventario/subnav";
 
-export const metadata = { title: "Inventario · ERP Náutico" };
+export const metadata = { title: "Inventario · FleetNautic" };
 
 export default async function InventarioPage() {
   const s = await requireModulo("inventario", "inventario:ver");

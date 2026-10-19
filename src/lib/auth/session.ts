@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/client";
 import { createClient } from "@/lib/supabase/server";
 import type { RolUsuario } from "@prisma/client";
 import { modulosEfectivos, type ModuloId } from "@/modules/registry";
+import { diasRestantes, pruebaVencida } from "@/lib/suscripcion/prueba";
 import { puede, type Permiso } from "@/modules/permisos";
 
 export type Sesion = {
@@ -17,6 +18,8 @@ export type Sesion = {
   moneda: string;
   zonaHoraria: string;
   estadoSuscripcion: "NINGUNA" | "ACTIVA" | "PAGO_PENDIENTE" | "CANCELADA";
+  /** Plan Prueba: cuándo termina, si ya terminó y cuántos días quedan */
+  prueba: { terminaEn: Date; vencida: boolean; diasRestantes: number } | null;
   modulos: ModuloId[];
 };
 
@@ -39,8 +42,9 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
     moneda: u.tenant.moneda,
     zonaHoraria: u.tenant.zonaHoraria,
     // El plan es el tope: bajar de plan quita módulos aunque sigan marcados en la empresa
-    modulos: modulosEfectivos(u.tenant.plan, u.tenant.modulos, u.tenant.estadoSuscripcion),
+    modulos: modulosEfectivos(u.tenant.plan, u.tenant.modulos, u.tenant.estadoSuscripcion, pruebaVencida(u.tenant.plan, u.tenant.pruebaTerminaEn)),
     estadoSuscripcion: u.tenant.estadoSuscripcion,
+    prueba: u.tenant.plan === "PRUEBA" && u.tenant.pruebaTerminaEn ? { terminaEn: u.tenant.pruebaTerminaEn, vencida: pruebaVencida(u.tenant.plan, u.tenant.pruebaTerminaEn), diasRestantes: diasRestantes(u.tenant.pruebaTerminaEn) } : null,
   };
 });
 

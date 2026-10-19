@@ -8,7 +8,7 @@ import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { ESTADOS_RESERVA, TONO_RESERVA } from "@/lib/etiquetas";
 import { BotonLink, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Reservas · ERP Náutico" };
+export const metadata = { title: "Reservas · FleetNautic" };
 
 export default async function ReservasPage({ searchParams }: { searchParams: Promise<{ estado?: string; desde?: string; q?: string }> }) {
   const sp = await searchParams;

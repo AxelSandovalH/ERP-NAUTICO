@@ -13,7 +13,7 @@ import { Campo, Input } from "@/components/ui";
 // Desde aquí se lanzan acciones masivas (generar nómina / recalcular comisiones)
 export const maxDuration = 120;
 
-export const metadata = { title: "Comisiones · ERP Náutico" };
+export const metadata = { title: "Comisiones · FleetNautic" };
 
 export default async function ComisionesPage({ searchParams }: { searchParams: Promise<{ periodo?: string }> }) {
   const sp = await searchParams;

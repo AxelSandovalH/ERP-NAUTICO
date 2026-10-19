@@ -7,7 +7,7 @@ import { ESTADOS_TRASLADO, TIPOS_TRASLADO, TONO_TRASLADO } from "@/lib/transport
 import { misTraslados } from "@/lib/transporte/servicio";
 import { Card, Insignia, PageHeader, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Mis traslados · ERP Náutico" };
+export const metadata = { title: "Mis traslados · FleetNautic" };
 const DIAS = 7;
 
 export default async function MisTrasladosPage() {

@@ -6,7 +6,7 @@ import { puede } from "@/modules/permisos";
 import { ROLES_TRIPULANTE } from "@/lib/etiquetas";
 import { BotonLink, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Equipo · ERP Náutico" };
+export const metadata = { title: "Equipo · FleetNautic" };
 
 export default async function TripulacionPage({ searchParams }: { searchParams: Promise<{ rol?: string; inactivos?: string }> }) {
   const sp = await searchParams;

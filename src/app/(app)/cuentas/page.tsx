@@ -9,7 +9,7 @@ import { Formulario } from "@/components/formulario";
 import { CamposCuenta } from "@/components/form-cuenta";
 import { guardarConfigAccion, guardarCuenta } from "./actions";
 
-export const metadata = { title: "Cuentas · ERP Náutico" };
+export const metadata = { title: "Cuentas · FleetNautic" };
 
 export default async function CuentasPage() {
   const s = await requireModulo("cuentas", "cuentas:administrar");

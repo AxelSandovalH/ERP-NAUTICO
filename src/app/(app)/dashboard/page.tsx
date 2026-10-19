@@ -12,7 +12,7 @@ import { variacion } from "@/lib/reportes/agregar";
 import { Tile } from "@/components/graficas/tile";
 import { contarPorReabastecer } from "@/lib/inventario/servicio";
 
-export const metadata = { title: "Panel · ERP Náutico" };
+export const metadata = { title: "Panel · FleetNautic" };
 
 const AVISOS: Record<string, string> = {
   "modulo-no-disponible": "Ese módulo no está activo en tu plan.",

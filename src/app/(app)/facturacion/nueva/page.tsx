@@ -10,7 +10,7 @@ import { Formulario } from "@/components/formulario";
 import { ErrorFacturacion } from "@/lib/facturacion/servicio";
 import { emitirAccion } from "../actions";
 
-export const metadata = { title: "Facturar · ERP Náutico" };
+export const metadata = { title: "Facturar · FleetNautic" };
 export const maxDuration = 60; // el timbrado puede tardar unos segundos
 
 export default async function NuevaFacturaPage({ searchParams }: { searchParams: Promise<{ reserva?: string; traslado?: string }> }) {

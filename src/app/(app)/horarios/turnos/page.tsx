@@ -7,7 +7,7 @@ import { BotonAccion } from "@/components/boton-accion";
 import { SubnavHorarios } from "@/components/horarios/subnav";
 import { alternarPlantillaAccion, guardarPlantillaAccion } from "../actions";
 
-export const metadata = { title: "Turnos · ERP Náutico" };
+export const metadata = { title: "Turnos · FleetNautic" };
 
 const hhmm = (min: number) => `${String(Math.floor(min / 60)).padStart(2, "0")}:${String(min % 60).padStart(2, "0")}`;
 

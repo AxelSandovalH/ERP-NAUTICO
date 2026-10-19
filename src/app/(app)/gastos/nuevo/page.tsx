@@ -5,7 +5,7 @@ import { asegurarCategoriasBase, obtenerConfig } from "@/lib/finanzas/servicio";
 import { Card, PageHeader, Vacio } from "@/components/ui";
 import { FormGasto } from "@/components/form-gasto";
 
-export const metadata = { title: "Nuevo gasto · ERP Náutico" };
+export const metadata = { title: "Nuevo gasto · FleetNautic" };
 
 export default async function NuevoGastoPage() {
   const s = await requireModulo("gastos", "gastos:registrar");

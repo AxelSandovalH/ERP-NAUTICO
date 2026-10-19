@@ -5,7 +5,7 @@ import { NOMBRES_DIA, horasTexto, lunesDe, minutosTrabajados, rangoTexto } from 
 import { miHorario } from "@/lib/horarios/servicio";
 import { Card, Insignia, PageHeader, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Mi horario · ERP Náutico" };
+export const metadata = { title: "Mi horario · FleetNautic" };
 const SEMANAS = 4;
 
 export default async function MiHorarioPage() {

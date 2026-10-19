@@ -10,7 +10,7 @@ import { BotonLink, Card, Campo, Input, Insignia, PageHeader, Select, Tabla, Td,
 import { Formulario } from "@/components/formulario";
 import { fijarDiaAccion } from "./actions";
 
-export const metadata = { title: "Asistencia · ERP Náutico" };
+export const metadata = { title: "Asistencia · FleetNautic" };
 
 export default async function AsistenciaPage({ searchParams }: { searchParams: Promise<{ dia?: string }> }) {
   const sp = await searchParams;

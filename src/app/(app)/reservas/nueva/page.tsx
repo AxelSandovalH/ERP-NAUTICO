@@ -4,7 +4,7 @@ import { esIso, hoyIso } from "@/lib/fechas";
 import { Card, PageHeader, Vacio } from "@/components/ui";
 import { FormReserva } from "@/components/form-reserva";
 
-export const metadata = { title: "Nueva reserva · ERP Náutico" };
+export const metadata = { title: "Nueva reserva · FleetNautic" };
 
 export default async function NuevaReservaPage({ searchParams }: { searchParams: Promise<{ fecha?: string; embarcacionId?: string; inicio?: string; clienteId?: string }> }) {
   const sp = await searchParams;

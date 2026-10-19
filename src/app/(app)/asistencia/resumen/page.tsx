@@ -7,7 +7,7 @@ import { diasEntre, periodoAnterior, periodoDe, periodoSiguiente, type Periodici
 import { PERIODICIDADES, SIMBOLO_DIA } from "@/lib/etiquetas";
 import { BotonLink, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
-export const metadata = { title: "Resumen de asistencia · ERP Náutico" };
+export const metadata = { title: "Resumen de asistencia · FleetNautic" };
 
 const COLOR: Record<string, string> = {
   TRABAJO: "text-emerald-600", VACACIONES: "text-sky-600", FALTA: "text-red-600 font-bold", PERMISO: "text-amber-600",

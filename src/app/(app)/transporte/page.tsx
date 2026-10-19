@@ -10,7 +10,7 @@ import { BotonLink, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/compone
 import { Tile } from "@/components/graficas/tile";
 import { SubnavTransporte } from "@/components/transporte/subnav";
 
-export const metadata = { title: "Transporte · ERP Náutico" };
+export const metadata = { title: "Transporte · FleetNautic" };
 
 export default async function TransportePage({ searchParams }: { searchParams: Promise<{ fecha?: string }> }) {
   const q = await searchParams;

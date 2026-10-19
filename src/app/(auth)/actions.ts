@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db/client";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { origenActual } from "@/lib/origen";
+import { finDePrueba } from "@/lib/suscripcion/prueba";
 import { MODULOS_POR_PLAN } from "@/modules/registry";
 import type { EstadoForm } from "@/components/formulario";
 
@@ -62,7 +63,7 @@ export async function registrar(_: EstadoForm, fd: FormData): Promise<EstadoForm
   try {
     await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
-        data: { nombre: p.data.empresa, slug: slugDe(p.data.empresa), plan: "PRUEBA", modulos: MODULOS_POR_PLAN.PRUEBA },
+        data: { nombre: p.data.empresa, slug: slugDe(p.data.empresa), plan: "PRUEBA", modulos: MODULOS_POR_PLAN.PRUEBA, pruebaTerminaEn: finDePrueba() },
       });
       await tx.usuario.create({
         data: { tenantId: tenant.id, supabaseId: authUser.id, email: p.data.email, nombre: p.data.nombre, rol: "ADMIN" },
@@ -111,7 +112,7 @@ export async function crearEmpresaOnboarding(_: EstadoForm, fd: FormData): Promi
   try {
     await prisma.$transaction(async (tx) => {
       const tenant = await tx.tenant.create({
-        data: { nombre: p.data.empresa, slug: slugDe(p.data.empresa), plan: "PRUEBA", modulos: MODULOS_POR_PLAN.PRUEBA },
+        data: { nombre: p.data.empresa, slug: slugDe(p.data.empresa), plan: "PRUEBA", modulos: MODULOS_POR_PLAN.PRUEBA, pruebaTerminaEn: finDePrueba() },
       });
       await tx.usuario.create({ data: { tenantId: tenant.id, supabaseId: au.id, email: au.email!.toLowerCase(), nombre, rol: "ADMIN" } });
     });

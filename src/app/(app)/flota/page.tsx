@@ -5,7 +5,7 @@ import { puede } from "@/modules/permisos";
 import { BotonLink, Card, Insignia, PageHeader, Vacio } from "@/components/ui";
 import { ESTADOS_EMBARCACION, TIPOS_EMBARCACION } from "@/lib/etiquetas";
 
-export const metadata = { title: "Flota · ERP Náutico" };
+export const metadata = { title: "Flota · FleetNautic" };
 
 export default async function FlotaPage() {
   const s = await requireModulo("flota");

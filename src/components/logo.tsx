@@ -15,8 +15,8 @@ export function LogoMarca({ className = "h-8 w-auto", titulo }: { className?: st
 export function Logo({ className = "h-8", conTexto = true }: { className?: string; conTexto?: boolean }) {
   return (
     <span className="inline-flex items-center gap-2.5">
-      <LogoMarca className={`${className} w-auto shrink-0`} titulo={conTexto ? undefined : "ERP Náutico"} />
-      {conTexto && <span className="text-lg font-semibold tracking-tight">ERP Náutico</span>}
+      <LogoMarca className={`${className} w-auto shrink-0`} titulo={conTexto ? undefined : "FleetNautic"} />
+      {conTexto && <span className="text-lg font-semibold tracking-tight">FleetNautic</span>}
     </span>
   );
 }

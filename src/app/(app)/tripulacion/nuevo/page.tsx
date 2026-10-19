@@ -5,7 +5,7 @@ import { Formulario } from "@/components/formulario";
 import { CamposTripulante } from "@/components/form-tripulante";
 import { guardarTripulante } from "../actions";
 
-export const metadata = { title: "Nuevo tripulante · ERP Náutico" };
+export const metadata = { title: "Nuevo tripulante · FleetNautic" };
 
 export default async function NuevoTripulantePage() {
   const s = await requireModulo("tripulacion", "tripulacion:escribir");

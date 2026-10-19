@@ -31,18 +31,20 @@ enum RolUsuario {
 }
 
 model Tenant {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  nombre      String
-  plan        Plan     @default(PRUEBA)
+  id              String    @id @default(cuid())
+  slug            String    @unique
+  nombre          String
+  plan            Plan      @default(PRUEBA)
   // Módulos activos (ids del registro en src/modules/registry.ts). El plan
   // define el conjunto por defecto; se puede ajustar por tenant.
-  modulos     String[] @default([])
-  moneda      String   @default("MXN")
+  modulos         String[]  @default([])
+  moneda          String    @default("MXN")
   // Zona IANA del negocio: define qué día es "hoy" para el calendario y el panel.
-  zonaHoraria String   @default("America/Mazatlan")
-  activo      Boolean  @default(true)
-  creadoEn    DateTime @default(now())
+  zonaHoraria     String    @default("America/Mazatlan")
+  activo          Boolean   @default(true)
+  creadoEn        DateTime  @default(now())
+  // Fin del periodo de prueba (solo plan Prueba): pasada esta fecha quedan solo el panel y la configuración hasta que contrate
+  pruebaTerminaEn DateTime?
 
   // Cobro con Stripe: la suscripción manda sobre `plan` mientras exista
   stripeCustomerId     String?           @unique

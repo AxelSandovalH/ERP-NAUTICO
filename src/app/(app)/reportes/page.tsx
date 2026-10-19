@@ -10,7 +10,7 @@ import { Tile } from "@/components/graficas/tile";
 import { GraficaMensual } from "@/components/graficas/grafica-mensual";
 import { BarrasHorizontales } from "@/components/graficas/barras-horizontales";
 
-export const metadata = { title: "Reportes · ERP Náutico" };
+export const metadata = { title: "Reportes · FleetNautic" };
 export const maxDuration = 120;
 
 export default async function ReportesPage({ searchParams }: { searchParams: Promise<{ rango?: string }> }) {

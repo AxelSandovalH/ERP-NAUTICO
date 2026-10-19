@@ -81,3 +81,77 @@ describe("firma de los webhooks de Stripe", () => {
     expect(() => stripe.webhooks.constructEvent(cuerpo, vieja, secreto)).toThrow(/tolerance|timestamp/i);
   });
 });
+
+import { desglosePlan, LOOKUP_KEYS_CARGO } from "./suscripcion";
+import { asegurarPrecioCargo, asegurarPrecioPlan, asegurarTasaIva } from "./catalogo";
+import { aSuscripcionMin } from "./sincronizar";
+
+describe("cobro con cargo e IVA", () => {
+  it("precio + 4 % de cargo + 16 % de IVA sobre ambos", () => {
+    expect(desglosePlan(6000)).toEqual({ precioCentavos: 600_000, cargoCentavos: 24_000, ivaCentavos: 99_840, totalCentavos: 723_840 });
+    expect(desglosePlan(10000)).toEqual({ precioCentavos: 1_000_000, cargoCentavos: 40_000, ivaCentavos: 166_400, totalCentavos: 1_206_400 });
+    expect(desglosePlan(15000)).toEqual({ precioCentavos: 1_500_000, cargoCentavos: 60_000, ivaCentavos: 249_600, totalCentavos: 1_809_600 });
+  });
+  it("cada plan tiene su propia clave de cargo, distinta de la del plan", () => {
+    expect(new Set(Object.values(LOOKUP_KEYS_CARGO)).size).toBe(3);
+    for (const k of Object.values(LOOKUP_KEYS_CARGO)) expect(Object.values(LOOKUP_KEYS)).not.toContain(k);
+  });
+});
+
+/** Stripe de mentira: guarda lo que se le crea y lo devuelve en los listados. */
+function stripeFalso() {
+  const precios: { lookup_key: string; unit_amount: number; recurring: unknown; tax_behavior: string }[] = [];
+  const tasas: { percentage: number; inclusive: boolean; country: string; display_name: string; id: string }[] = [];
+  const creados: string[] = [];
+  const s = {
+    prices: {
+      list: async ({ lookup_keys }: { lookup_keys: string[] }) => ({ data: precios.filter((p) => lookup_keys.includes(p.lookup_key)) }),
+      create: async (p: (typeof precios)[number]) => { creados.push(`precio:${p.lookup_key}`); precios.push(p); return p; },
+    },
+    products: { create: async () => ({ id: "prod_1" }) },
+    taxRates: {
+      list: async () => ({ data: tasas }),
+      create: async (t: Omit<(typeof tasas)[number], "id">) => { creados.push("tasa"); const x = { ...t, id: `txr_${tasas.length + 1}` }; tasas.push(x); return x; },
+    },
+  };
+  return { stripe: s as unknown as Stripe, precios, tasas, creados };
+}
+
+describe("catálogo de la suscripción", () => {
+  it("crea el precio del plan y su cargo con los importes correctos, y no los duplica", async () => {
+    const { stripe, precios, creados } = stripeFalso();
+    const plan = await asegurarPrecioPlan(stripe, "CONTROL");
+    const cargo = await asegurarPrecioCargo(stripe, "CONTROL");
+    expect(plan).toMatchObject({ lookup_key: "fleetnautic_control_mensual", unit_amount: 600_000, tax_behavior: "exclusive", recurring: { interval: "month" } });
+    expect(cargo).toMatchObject({ lookup_key: "fleetnautic_control_cargo", unit_amount: 24_000 });
+    await asegurarPrecioPlan(stripe, "CONTROL"); await asegurarPrecioCargo(stripe, "CONTROL");
+    expect(precios).toHaveLength(2);
+    expect(creados).toHaveLength(2);
+  });
+  it("cada plan lleva su cargo: 10,000 → 400.00 y 15,000 → 600.00", async () => {
+    const { stripe } = stripeFalso();
+    expect((await asegurarPrecioCargo(stripe, "GESTION")).unit_amount).toBe(40_000);
+    expect((await asegurarPrecioCargo(stripe, "ENTERPRISE")).unit_amount).toBe(60_000);
+  });
+  it("la tasa de IVA es del 16 %, no incluida, y se reutiliza", async () => {
+    const { stripe, tasas } = stripeFalso();
+    const a = await asegurarTasaIva(stripe), b = await asegurarTasaIva(stripe);
+    expect(a).toMatchObject({ percentage: 16, inclusive: false, country: "MX", display_name: "IVA" });
+    expect(b.id).toBe(a.id);
+    expect(tasas).toHaveLength(1);
+  });
+});
+
+describe("la suscripción con dos renglones", () => {
+  const item = (lookup_key: string | null, fin: number) => ({ current_period_end: fin, price: { lookup_key } });
+  const sub = (items: unknown[]) => ({ id: "sub_1", customer: "cus_1", status: "active", cancel_at_period_end: false, metadata: { tenantId: "t1" }, items: { data: items } }) as unknown as Stripe.Subscription;
+  it("el plan lo marca el renglón con clave de plan, aunque el cargo vaya primero", () => {
+    const m = aSuscripcionMin(sub([item("fleetnautic_gestion_cargo", 111), item("fleetnautic_gestion_mensual", 222)]));
+    expect(m.lookupKey).toBe("fleetnautic_gestion_mensual");
+    expect(m.periodoFin).toBe(222);
+  });
+  it("sin renglón de plan toma el primero (suscripciones anteriores al cargo)", () => {
+    expect(aSuscripcionMin(sub([item("fleetnautic_control_mensual", 5)])).lookupKey).toBe("fleetnautic_control_mensual");
+    expect(aSuscripcionMin(sub([item(null, 9)])).lookupKey).toBeNull();
+  });
+});

@@ -1,4 +1,4 @@
-# ERP Náutico
+# FleetNautic
 
 ERP SaaS **modular y vertical** para operadores náuticos (charters y tours). Multi-tenant: varias empresas comparten una instalación y una base de datos, aisladas entre sí.
 

@@ -9,7 +9,7 @@ import { BotonAccion } from "@/components/boton-accion";
 import { SubnavInventario } from "@/components/inventario/subnav";
 import { alternarArticuloAccion, crearAlmacenAccion, guardarArticuloAccion } from "../actions";
 
-export const metadata = { title: "Artículos · Inventario · ERP Náutico" };
+export const metadata = { title: "Artículos · Inventario · FleetNautic" };
 
 function CamposArticulo({ v }: { v?: { nombre: string; unidad: string; categoria: string | null; minimoMilli: number; notas: string | null } }) {
   return (

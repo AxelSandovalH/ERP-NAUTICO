@@ -8,7 +8,7 @@ import { Formulario } from "@/components/formulario";
 import { CamposBeneficiario } from "@/components/form-beneficiario";
 import { guardarBeneficiario } from "../actions";
 
-export const metadata = { title: "Beneficiarios · ERP Náutico" };
+export const metadata = { title: "Beneficiarios · FleetNautic" };
 
 export default async function BeneficiariosPage() {
   const s = await requireModulo("comisiones", "comisiones:administrar");

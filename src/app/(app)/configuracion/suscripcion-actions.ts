@@ -4,10 +4,9 @@ import { z } from "zod";
 import { prisma } from "@/lib/db/client";
 import { requireSesion } from "@/lib/auth/session";
 import { puede } from "@/modules/permisos";
-import { PLANES } from "@/modules/registry";
 import { origenActual } from "@/lib/origen";
 import { stripe, stripeConfigurado } from "@/lib/stripe/cliente";
-import { LOOKUP_KEYS } from "@/lib/stripe/suscripcion";
+import { asegurarPrecioCargo, asegurarPrecioPlan, asegurarTasaIva } from "@/lib/stripe/catalogo";
 import type { EstadoForm } from "@/components/formulario";
 
 const planSchema = z.enum(["CONTROL", "GESTION", "ENTERPRISE"]);
@@ -17,20 +16,6 @@ async function admin() {
   if (!puede(s.rol, "usuarios:administrar")) throw new Error("Sin permiso");
   if (!stripeConfigurado()) throw new Error("El cobro no está configurado");
   return s;
-}
-
-/** Precio del plan en Stripe. Si todavía no existe se crea aquí mismo (producto + precio mensual en MXN),
- *  así nadie tiene que dar de alta productos a mano. Se identifica por `lookup_key`; el importe sale del registro de planes. */
-async function asegurarPrecio(plan: z.infer<typeof planSchema>) {
-  const clave = LOOKUP_KEYS[plan];
-  const existe = (await stripe().prices.list({ lookup_keys: [clave], active: true, limit: 1 })).data[0];
-  if (existe) return existe;
-  const def = PLANES[plan];
-  const producto = await stripe().products.create({ name: `FleetNautic ${def.nombre}`, description: def.resumen, metadata: { plan } }, { idempotencyKey: `producto-${clave}` });
-  return stripe().prices.create(
-    { product: producto.id, currency: "mxn", unit_amount: (def.precioMxnMensual ?? 0) * 100, recurring: { interval: "month" }, lookup_key: clave },
-    { idempotencyKey: `precio-${clave}` },
-  );
 }
 
 /** Cliente de Stripe de la empresa: se crea una sola vez (la llave de idempotencia evita duplicados por doble clic). */
@@ -52,14 +37,15 @@ export async function iniciarSuscripcionAccion(plan: string, _: EstadoForm): Pro
 
   let url: string | null;
   try {
-    const precio = await asegurarPrecio(p.data);
+    // El plan, su cargo por servicio de pago (4 %) y el IVA (16 % sobre ambos) como renglones del mismo cobro mensual
+    const [precio, cargo, iva] = await Promise.all([asegurarPrecioPlan(stripe(), p.data), asegurarPrecioCargo(stripe(), p.data), asegurarTasaIva(stripe())]);
     const cliente = await clienteDe(s.tenantId, s.tenantNombre, s.email);
     const origen = await origenActual();
     const sesion = await stripe().checkout.sessions.create({
       mode: "subscription",
       customer: cliente,
       client_reference_id: s.tenantId,
-      line_items: [{ price: precio.id, quantity: 1 }],
+      line_items: [{ price: precio.id, quantity: 1, tax_rates: [iva.id] }, { price: cargo.id, quantity: 1, tax_rates: [iva.id] }],
       subscription_data: { metadata: { tenantId: s.tenantId, plan: p.data } },
       metadata: { tenantId: s.tenantId, plan: p.data },
       allow_promotion_codes: true,

@@ -7,7 +7,7 @@ import { BotonAccion } from "@/components/boton-accion";
 import { SubnavHorarios } from "@/components/horarios/subnav";
 import { alternarPersonaAccion, crearPersonaAccion, vincularUsuarioAccion } from "../actions";
 
-export const metadata = { title: "Equipo · Horarios · ERP Náutico" };
+export const metadata = { title: "Equipo · Horarios · FleetNautic" };
 
 export default async function EquipoHorariosPage() {
   const s = await requireModulo("horarios", "horarios:administrar");
