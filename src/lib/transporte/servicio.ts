@@ -128,6 +128,12 @@ const INCLUIR = { reserva: { include: { cliente: true, embarcacion: true } }, un
 export const trasladosDelDia = (tx: Tx, fecha: string) =>
   tx.traslado.findMany({ where: { fecha: aDate(fecha) }, orderBy: [{ horaMin: "asc" }, { creadoEn: "asc" }], include: INCLUIR });
 
+/** Agenda: traslados vivos (sin cancelados) desde `desde` durante `dias` días, por fecha y hora. */
+export async function trasladosAgendados(tx: Tx, desde: string, dias: number) {
+  const hasta = aIso(new Date(aDate(desde).getTime() + (dias - 1) * 86_400_000));
+  return tx.traslado.findMany({ where: { estado: { not: "CANCELADO" }, fecha: { gte: aDate(desde), lte: aDate(hasta) } }, orderBy: [{ fecha: "asc" }, { horaMin: "asc" }, { creadoEn: "asc" }], include: INCLUIR });
+}
+
 export const trasladosDeReserva = (tx: Tx, reservaId: string) =>
   tx.traslado.findMany({ where: { reservaId }, orderBy: [{ fecha: "asc" }, { horaMin: "asc" }], include: { unidad: true, chofer: true } });
 

@@ -83,6 +83,7 @@ export async function crearTarifa(embarcacionId: string, _: EstadoForm, fd: Form
   });
   if (!ok) return { error: "Embarcación no encontrada." };
   revalidatePath(`/flota/${embarcacionId}`);
+  revalidatePath("/tarifas");
   return { ok: "Tarifa agregada." };
 }
 
@@ -91,6 +92,7 @@ export async function eliminarTarifa(embarcacionId: string, tarifaId: string) {
   // Las reservas conservan su total; la tarifa se desliga (onDelete: SetNull)
   await withTenant(s.tenantId, (tx) => tx.tarifa.deleteMany({ where: { id: tarifaId, embarcacionId } }));
   revalidatePath(`/flota/${embarcacionId}`);
+  revalidatePath("/tarifas");
 }
 
 const bloqueoSchema = z.object({ desde: z.string(), hasta: z.string(), motivo: z.string().trim().min(2, "Escribe el motivo").max(200) });

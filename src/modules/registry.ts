@@ -253,8 +253,76 @@ export function modulosActivos(guardados: string[]): ModuloId[] {
   return [...set];
 }
 
+// ─── barra de navegación ─────────────────────────────────────────────────────
+
+/** Una página dentro de una sección de la barra. La primera entrada es la principal; las demás se muestran como pestañas. */
+export type Entrada = { href: string; etiqueta: string; modulo: ModuloId; permiso?: Permiso };
+export type SeccionDef = { id: string; etiqueta: string; entradas: Entrada[] };
+
+/** Orden de la barra lateral, en tres grupos separados. Lo que no es un módulo propio vive como pestaña dentro de otra sección:
+ *  Reservas y Clientes en Calendario; Equipo, Asistencia y Horarios en Nómina; Cuentas en Conciliación; Inventario en Flota. */
+export const GRUPOS_NAV: SeccionDef[][] = [
+  [
+    { id: "flota", etiqueta: "Flota", entradas: [
+      { href: "/flota", etiqueta: "Embarcaciones", modulo: "flota" },
+      { href: "/inventario", etiqueta: "Inventario", modulo: "inventario", permiso: "inventario:ver" },
+    ] },
+    { id: "transporte", etiqueta: "Transporte", entradas: [
+      { href: "/transporte", etiqueta: "Traslados", modulo: "transporte", permiso: "transporte:ver" },
+      { href: "/transporte/unidades", etiqueta: "Flota terrestre", modulo: "transporte", permiso: "transporte:ver" },
+      { href: "/transporte/mios", etiqueta: "Mis traslados", modulo: "transporte", permiso: "transporte:ver_propio" },
+    ] },
+    { id: "calendario", etiqueta: "Calendario", entradas: [
+      { href: "/calendario", etiqueta: "Calendario", modulo: "calendario" },
+      { href: "/reservas", etiqueta: "Reservas", modulo: "reservas" },
+      { href: "/clientes", etiqueta: "Clientes", modulo: "reservas" },
+    ] },
+  ],
+  [
+    { id: "ingresos", etiqueta: "Ingresos", entradas: [{ href: "/ingresos", etiqueta: "Ingresos", modulo: "ingresos", permiso: "ingresos:ver" }] },
+    { id: "gastos", etiqueta: "Gastos", entradas: [{ href: "/gastos", etiqueta: "Gastos", modulo: "gastos", permiso: "gastos:registrar" }] },
+    { id: "facturacion", etiqueta: "Facturación", entradas: [{ href: "/facturacion", etiqueta: "Facturación", modulo: "facturacion", permiso: "facturacion:ver" }] },
+    { id: "conciliacion", etiqueta: "Conciliación", entradas: [
+      { href: "/conciliacion", etiqueta: "Conciliación", modulo: "conciliacion", permiso: "conciliacion:administrar" },
+      { href: "/cuentas", etiqueta: "Cuentas", modulo: "cuentas", permiso: "cuentas:administrar" },
+    ] },
+    { id: "nomina", etiqueta: "Nómina", entradas: [
+      { href: "/nomina", etiqueta: "Nómina", modulo: "nomina", permiso: "nomina:administrar" },
+      { href: "/asistencia", etiqueta: "Asistencia", modulo: "asistencia", permiso: "asistencia:checar" },
+      { href: "/tripulacion", etiqueta: "Equipo", modulo: "tripulacion" },
+      { href: "/horarios", etiqueta: "Horarios", modulo: "horarios", permiso: "horarios:administrar" },
+      { href: "/horarios/mio", etiqueta: "Mi horario", modulo: "horarios", permiso: "horarios:ver_propio" },
+    ] },
+  ],
+  [
+    { id: "comisiones", etiqueta: "Comisiones", entradas: [{ href: "/comisiones", etiqueta: "Comisiones", modulo: "comisiones", permiso: "comisiones:ver_propias" }] },
+    { id: "tarifas", etiqueta: "Tarifas", entradas: [{ href: "/tarifas", etiqueta: "Tarifas", modulo: "flota" }] },
+    { id: "reportes", etiqueta: "Reportes", entradas: [{ href: "/reportes", etiqueta: "Reportes", modulo: "reportes", permiso: "reportes:ver" }] },
+    { id: "dashboard", etiqueta: "Dashboard", entradas: [{ href: "/dashboard", etiqueta: "Dashboard", modulo: "nucleo" }] },
+  ],
+];
+
+export type SeccionNav = { id: string; etiqueta: string; href: string; rutas: string[]; tabs: { href: string; etiqueta: string }[] };
+
+const visible = (e: Entrada, activos: ModuloId[], rol?: RolUsuario) => activos.includes(e.modulo) && (!e.permiso || (!!rol && puede(rol, e.permiso)));
+
+/** Barra lateral para esta empresa y este rol: grupos de secciones, ya sin lo que el plan, los módulos o el rol no permiten.
+ *  Si la entrada principal no es visible, la sección toma el nombre y el destino de la primera que sí lo sea. */
+export function seccionesDe(activos: ModuloId[], rol?: RolUsuario): SeccionNav[][] {
+  return GRUPOS_NAV.map((grupo) => grupo.flatMap((sec) => {
+    const vis = sec.entradas.filter((e) => visible(e, activos, rol));
+    if (vis.length === 0) return [];
+    return [{
+      id: sec.id,
+      etiqueta: vis[0] === sec.entradas[0] ? sec.etiqueta : vis[0].etiqueta,
+      href: vis[0].href,
+      rutas: sec.entradas.map((e) => e.href),
+      tabs: vis.map((e) => ({ href: e.href, etiqueta: e.etiqueta })),
+    }];
+  })).filter((g) => g.length > 0);
+}
+
+/** Todas las páginas a las que esta empresa y este rol pueden entrar desde la barra (sin repetir secciones). */
 export function navDe(activos: ModuloId[], rol?: RolUsuario) {
-  return ORDEN_NAV.filter((m) => activos.includes(m))
-    .flatMap((m) => MODULOS[m].nav)
-    .filter((n) => !n.permiso || (rol && puede(rol, n.permiso)));
+  return seccionesDe(activos, rol).flat().flatMap((s) => s.tabs);
 }

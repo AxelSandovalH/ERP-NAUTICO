@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MODULOS, MODULOS_POR_PLAN, PLANES, PLANES_DE_PAGO, caracteristicasDe, esConstruido, modulosActivos, modulosEfectivos, navDe, type ModuloId } from "./registry";
+import { MODULOS, MODULOS_POR_PLAN, PLANES, PLANES_DE_PAGO, caracteristicasDe, esConstruido, modulosActivos, modulosEfectivos, navDe, seccionesDe, type ModuloId } from "./registry";
 import { puede } from "./permisos";
 
 const hrefs = (plan: Parameters<typeof modulosEfectivos>[0], rol: "ADMIN" | "GERENTE" | "VENDEDOR" | "OPERACIONES" = "ADMIN") =>
@@ -201,9 +201,28 @@ describe("qué ve cada plan", () => {
 });
 
 describe("navegación por rol", () => {
-  it("configuración solo se muestra al admin", () => {
-    expect(hrefs("ENTERPRISE", "ADMIN")).toContain("/configuracion");
-    expect(hrefs("ENTERPRISE", "VENDEDOR")).not.toContain("/configuracion");
+  it("configuración ya no está en la barra: vive en el menú de la cuenta", () => {
+    expect(hrefs("ENTERPRISE", "ADMIN")).not.toContain("/configuracion");
+  });
+  it("la barra sigue el orden pedido, en tres grupos", () => {
+    const grupos = seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), "ADMIN").map((g) => g.map((s) => s.etiqueta));
+    expect(grupos).toEqual([
+      ["Flota", "Transporte", "Calendario"],
+      ["Ingresos", "Gastos", "Facturación", "Conciliación", "Nómina"],
+      ["Comisiones", "Tarifas", "Reportes", "Dashboard"],
+    ]);
+  });
+  it("Cuentas vive dentro de Conciliación; Asistencia y Equipo dentro de Nómina; Reservas dentro de Calendario", () => {
+    const sec = (id: string) => seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), "ADMIN").flat().find((s) => s.id === id)!;
+    expect(sec("conciliacion").tabs.map((t) => t.href)).toEqual(["/conciliacion", "/cuentas"]);
+    expect(sec("nomina").tabs.map((t) => t.href)).toEqual(expect.arrayContaining(["/nomina", "/asistencia", "/tripulacion", "/horarios"]));
+    expect(sec("calendario").tabs.map((t) => t.href)).toEqual(["/calendario", "/reservas", "/clientes"]);
+    expect(sec("transporte").tabs.map((t) => t.etiqueta)).toContain("Flota terrestre");
+  });
+  it("si no ve la entrada principal, la sección toma el nombre de la primera que sí ve", () => {
+    const nomina = seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), "VENDEDOR").flat().find((s) => s.id === "nomina");
+    expect(nomina?.etiqueta).toBe("Asistencia");
+    expect(nomina?.href).toBe("/asistencia");
   });
   it("todos checan asistencia; solo admin y gerente ven nómina", () => {
     for (const r of ["ADMIN", "GERENTE", "VENDEDOR", "OPERACIONES"] as const) expect(hrefs("ENTERPRISE", r)).toContain("/asistencia");

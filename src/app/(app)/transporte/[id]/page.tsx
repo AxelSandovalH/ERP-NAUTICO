@@ -12,7 +12,6 @@ import { BotonLink, Campo, Card, Input, Insignia, PageHeader, Select, Tabla, Td,
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { CamposTraslado } from "@/components/transporte/form-traslado";
-import { SubnavTransporte } from "@/components/transporte/subnav";
 import { anularCobroAccion, cobroAccion, estadoAccion, gastoAccion, guardarTrasladoAccion } from "../actions";
 
 export default async function TrasladoPage({ params }: { params: Promise<{ id: string }> }) {
@@ -49,7 +48,6 @@ export default async function TrasladoPage({ params }: { params: Promise<{ id: s
         titulo={`Traslado · ${minutosAHora(t.horaMin)}`} sub={`${fechaLarga(aIso(t.fecha))} · ${TIPOS_TRASLADO[t.tipo]}`}
         acciones={<Insignia tono={TONO_TRASLADO[t.estado]}>{ESTADOS_TRASLADO[t.estado]}</Insignia>}
       />
-      <SubnavTransporte activo="/transporte" />
       <div className="grid gap-6 lg:grid-cols-[3fr_2fr]">
         <div className="space-y-6">
           <Card>

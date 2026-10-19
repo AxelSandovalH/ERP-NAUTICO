@@ -5,7 +5,6 @@ import { minutosAHora } from "@/lib/reservas/disponibilidad";
 import { Card, PageHeader } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { CamposTraslado } from "@/components/transporte/form-traslado";
-import { SubnavTransporte } from "@/components/transporte/subnav";
 import { guardarTrasladoAccion } from "../actions";
 
 export const metadata = { title: "Nuevo traslado · FleetNautic" };
@@ -26,7 +25,6 @@ export default async function NuevoTrasladoPage({ searchParams }: { searchParams
   return (
     <>
       <PageHeader titulo="Nuevo traslado" sub="Recoger o regresar a los clientes de una reserva" />
-      <SubnavTransporte activo="/transporte" />
       <Card>
         <Formulario accion={guardarTrasladoAccion.bind(null, null)} enviar="Crear traslado">
           <CamposTraslado

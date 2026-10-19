@@ -4,10 +4,9 @@ import { puede } from "@/modules/permisos";
 import { Campo, Card, Input, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
-import { SubnavTransporte } from "@/components/transporte/subnav";
 import { alternarUnidadAccion, guardarUnidadAccion } from "../actions";
 
-export const metadata = { title: "Unidades · Transporte · FleetNautic" };
+export const metadata = { title: "Flota terrestre · Transporte · FleetNautic" };
 
 function CamposUnidad({ v }: { v?: { nombre: string; placas: string | null; capacidad: number; notas: string | null } }) {
   return (
@@ -28,8 +27,7 @@ export default async function UnidadesPage() {
   const unidades = await withTenant(s.tenantId, (tx) => tx.unidadTransporte.findMany({ orderBy: [{ activa: "desc" }, { nombre: "asc" }] }));
   return (
     <>
-      <PageHeader titulo="Unidades" sub="Vehículos con los que haces los traslados" />
-      <SubnavTransporte activo="/transporte/unidades" />
+      <PageHeader titulo="Flota terrestre" sub="Camionetas y vehículos con los que haces los traslados" />
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div>
           {unidades.length === 0 ? <Vacio>Aún no hay unidades. Agrega la primera.</Vacio> : (
