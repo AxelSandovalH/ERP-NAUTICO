@@ -9,7 +9,7 @@ import { BotonAccion } from "@/components/boton-accion";
 import { CamposEmbarcacion } from "@/components/form-embarcacion";
 import { FotoEmbarcacion } from "@/components/foto-embarcacion";
 import { urlFoto } from "@/lib/storage/reglas";
-import { actualizarEmbarcacion, crearBloqueo, crearTarifa, eliminarBloqueo, eliminarTarifa } from "../actions";
+import { actualizarEmbarcacion, confirmarFotoAccion, crearBloqueo, prepararFotoAccion, quitarFotoAccion, crearTarifa, eliminarBloqueo, eliminarTarifa } from "../actions";
 
 export default async function EmbarcacionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -27,7 +27,7 @@ export default async function EmbarcacionPage({ params }: { params: Promise<{ id
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <h2 className="mb-4 font-semibold">Foto</h2>
-          <FotoEmbarcacion embarcacionId={e.id} url={urlFoto(e.fotoRuta)} puedeEditar={editar} />
+          <FotoEmbarcacion embarcacionId={e.id} url={urlFoto(e.fotoRuta)} puedeEditar={editar} acciones={{ preparar: prepararFotoAccion, confirmar: confirmarFotoAccion, quitar: quitarFotoAccion }} />
           <h2 className="mb-4 mt-6 font-semibold">Datos</h2>
           {editar ? (
             <Formulario accion={actualizarEmbarcacion.bind(null, e.id)}><CamposEmbarcacion v={e} conEstado /></Formulario>

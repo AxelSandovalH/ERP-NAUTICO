@@ -1219,6 +1219,8 @@ model UnidadTransporte {
   capacidad Int
   activa    Boolean  @default(true)
   notas     String?
+  // Foto: ruta dentro del bucket público "fotos-flota" (<tenantId>/<unidadId>/<id>.jpg)
+  fotoRuta  String?
   creadoEn  DateTime @default(now())
 
   traslados Traslado[]

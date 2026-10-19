@@ -17,7 +17,7 @@ export default async function FlotaPage() {
       <PageHeader titulo="Flota" sub={`${flota.length} embarcaciones`}
         acciones={puede(s.rol, "flota:escribir") && <BotonLink href="/flota/nueva">Nueva embarcación</BotonLink>} />
       {flota.length === 0 ? <Vacio>Aún no registras embarcaciones.</Vacio> : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-5">
           {flota.map((e) => (
             <Link key={e.id} href={`/flota/${e.id}`}>
               <Card className="h-full overflow-hidden transition hover:border-brand">

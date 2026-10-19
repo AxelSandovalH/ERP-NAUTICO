@@ -3,12 +3,17 @@ import { useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@supabase/supabase-js";
 import { Camera, ImageIcon, Trash2 } from "lucide-react";
-import { confirmarFotoAccion, prepararFotoAccion, quitarFotoAccion } from "@/app/(app)/flota/actions";
 import { BUCKET_FOTOS, esMimeFoto, validarFoto } from "@/lib/storage/reglas";
 import { prepararArchivo } from "@/lib/storage/cliente";
 
-/** Foto principal de la embarcación: se reduce en el navegador y se sube directo a Storage. */
-export function FotoEmbarcacion({ embarcacionId, url, puedeEditar }: { embarcacionId: string; url: string | null; puedeEditar: boolean }) {
+type Acciones = {
+  preparar: (id: string, a: { mime: string; tamano: number }) => Promise<{ error: string } | { ruta: string; token: string }>;
+  confirmar: (id: string, ruta: string) => Promise<{ error?: string; ok?: true }>;
+  quitar: (id: string) => Promise<{ error?: string; ok?: true }>;
+};
+
+/** Foto principal de una embarcación o unidad: se reduce en el navegador y se sube directo a Storage. */
+export function FotoEmbarcacion({ embarcacionId, url, puedeEditar, acciones, compacta }: { embarcacionId: string; url: string | null; puedeEditar: boolean; acciones: Acciones; compacta?: boolean }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [pendiente, iniciar] = useTransition();
@@ -22,12 +27,12 @@ export function FotoEmbarcacion({ embarcacionId, url, puedeEditar }: { embarcaci
       const archivo = await prepararArchivo(original);
       const motivo = validarFoto({ mime: archivo.type, tamano: archivo.size });
       if (motivo || !esMimeFoto(archivo.type)) { setMsg(motivo ?? "Solo se aceptan fotos JPG, PNG o WebP."); return; }
-      const p = await prepararFotoAccion(embarcacionId, { mime: archivo.type, tamano: archivo.size });
+      const p = await acciones.preparar(embarcacionId, { mime: archivo.type, tamano: archivo.size });
       if ("error" in p) { setMsg(p.error); return; }
       const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false, autoRefreshToken: false } });
       const { error } = await sb.storage.from(BUCKET_FOTOS).uploadToSignedUrl(p.ruta, p.token, archivo, { contentType: archivo.type });
       if (error) { setMsg("No se pudo subir la foto."); return; }
-      const r = await confirmarFotoAccion(embarcacionId, p.ruta);
+      const r = await acciones.confirmar(embarcacionId, p.ruta);
       if (r.error) { setMsg(r.error); return; }
       if (input.current) input.current.value = "";
       router.refresh();
@@ -36,12 +41,12 @@ export function FotoEmbarcacion({ embarcacionId, url, puedeEditar }: { embarcaci
 
   function quitar() {
     if (!window.confirm("¿Quitar la foto de esta embarcación?")) return;
-    iniciar(async () => { const r = await quitarFotoAccion(embarcacionId); setMsg(r.error ?? null); router.refresh(); });
+    iniciar(async () => { const r = await acciones.quitar(embarcacionId); setMsg(r.error ?? null); router.refresh(); });
   }
 
   return (
     <div>
-      <div className="relative aspect-[16/10] overflow-hidden rounded-lg border border-line bg-surface">
+      <div className={`relative aspect-[16/10] overflow-hidden rounded-lg border border-line bg-surface ${compacta ? "max-w-xs" : ""}`}>
         {url
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={url} alt="Foto de la embarcación" className="h-full w-full object-cover" />

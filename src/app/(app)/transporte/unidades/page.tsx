@@ -4,7 +4,9 @@ import { puede } from "@/modules/permisos";
 import { Campo, Card, Input, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
-import { alternarUnidadAccion, guardarUnidadAccion } from "../actions";
+import { FotoEmbarcacion } from "@/components/foto-embarcacion";
+import { urlFoto } from "@/lib/storage/reglas";
+import { alternarUnidadAccion, confirmarFotoUnidadAccion, guardarUnidadAccion, prepararFotoUnidadAccion, quitarFotoUnidadAccion } from "../actions";
 
 export const metadata = { title: "Flota terrestre · Transporte · FleetNautic" };
 
@@ -32,15 +34,24 @@ export default async function UnidadesPage() {
         <div>
           {unidades.length === 0 ? <Vacio>Aún no hay unidades. Agrega la primera.</Vacio> : (
             <Tabla>
-              <thead><tr><Th>Unidad</Th><Th>Capacidad</Th><Th>Placas</Th>{gestionar && <Th />}</tr></thead>
+              <thead><tr><Th>Foto</Th><Th>Unidad</Th><Th>Capacidad</Th><Th>Placas</Th>{gestionar && <Th />}</tr></thead>
               <tbody>
                 {unidades.map((u) => (
                   <tr key={u.id} className={u.activa ? "" : "opacity-60"}>
+                    <Td className="w-24">
+                      {u.fotoRuta
+                        // eslint-disable-next-line @next/next/no-img-element
+                        ? <img src={urlFoto(u.fotoRuta)!} alt={u.nombre} loading="lazy" className="h-14 w-20 rounded-md border border-line object-cover" />
+                        : <span className="flex h-14 w-20 items-center justify-center rounded-md border border-dashed border-line text-[10px] text-muted">Sin foto</span>}
+                    </Td>
                     <Td className="font-medium">{u.nombre}{!u.activa && <> <Insignia>Inactiva</Insignia></>}
                       {gestionar && (
                         <details className="mt-2">
                           <summary className="cursor-pointer text-xs font-normal text-brand">Editar</summary>
-                          <div className="mt-3 font-normal"><Formulario accion={guardarUnidadAccion.bind(null, u.id)}><CamposUnidad v={u} /></Formulario></div>
+                          <div className="mt-3 space-y-4 font-normal">
+                            <FotoEmbarcacion embarcacionId={u.id} url={urlFoto(u.fotoRuta)} puedeEditar compacta acciones={{ preparar: prepararFotoUnidadAccion, confirmar: confirmarFotoUnidadAccion, quitar: quitarFotoUnidadAccion }} />
+                            <Formulario accion={guardarUnidadAccion.bind(null, u.id)}><CamposUnidad v={u} /></Formulario>
+                          </div>
                         </details>
                       )}
                     </Td>

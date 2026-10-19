@@ -42,6 +42,8 @@ const SOBRE_NAVY = { "--logo-bote": "#ffffff" } as CSSProperties;
 export function ShellApp({ grupos, tenantNombre, usuarioNombre, puedeConfigurar, salir, children }: Props) {
   const pathname = usePathname();
   const compacto = pathname.startsWith("/calendario");
+  // La lista de la flota aprovecha todo el ancho: las tarjetas con foto crecen para llenarlo
+  const ancho = pathname === "/flota";
   const seccion = grupos.flat().find((s) => s.rutas.some((r) => pathname === r || pathname.startsWith(`${r}/`)));
   // En el celular el menú está plegado. Se guarda en qué pantalla se abrió: al navegar a otra se cierra solo.
   const [abiertoEn, setAbiertoEn] = useState<string | null>(null);
@@ -88,7 +90,7 @@ export function ShellApp({ grupos, tenantNombre, usuarioNombre, puedeConfigurar,
       <div className="flex justify-end px-4 pt-3 md:px-8">
         <MenuCuenta nombre={usuarioNombre} empresa={tenantNombre} configuracion={puedeConfigurar} salir={salir} />
       </div>
-      <main className={compacto ? "w-full min-w-0 px-2 py-2 md:px-3 md:py-3" : "mx-auto w-full min-w-0 max-w-6xl px-4 py-6 md:px-8"}>{seccion && seccion.tabs.length > 1 && <PestanasSeccion tabs={seccion.tabs} pathname={pathname} />}{children}</main>
+      <main className={compacto ? "w-full min-w-0 px-2 py-2 md:px-3 md:py-3" : `mx-auto w-full min-w-0 px-4 py-6 md:px-8 ${ancho ? "max-w-none" : "max-w-6xl"}`}>{seccion && seccion.tabs.length > 1 && <PestanasSeccion tabs={seccion.tabs} pathname={pathname} />}{children}</main>
     </div>
   );
 }

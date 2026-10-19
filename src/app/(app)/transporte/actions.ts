@@ -9,6 +9,7 @@ import { ErrorFinanzas } from "@/lib/finanzas/servicio";
 import { horaAMinutos } from "@/lib/horarios/semana";
 import { ErrorTransporte, anularCobro, cambiarEstado, guardarTraslado, guardarUnidad, registrarCobro, registrarGastoDeTraslado } from "@/lib/transporte/servicio";
 import type { EstadoForm } from "@/components/formulario";
+import { borrarFoto, confirmarFoto, prepararFoto } from "@/lib/storage/fotos-servidor";
 
 const gestionar = () => requireModulo("transporte", "transporte:gestionar");
 const finanzas = () => requireModulo("transporte", "transporte:finanzas");
@@ -113,4 +114,38 @@ export async function gastoAccion(id: string, _: EstadoForm, fd: FormData): Prom
     refrescar();
     return { ok: "Gasto registrado." };
   });
+}
+
+// ─── foto de la unidad ───────────────────────────────────────────────────────
+
+export async function prepararFotoUnidadAccion(unidadId: string, a: { mime: string; tamano: number }): Promise<{ error: string } | { ruta: string; token: string }> {
+  const s = await gestionar();
+  if (!(await withTenant(s.tenantId, (tx) => tx.unidadTransporte.findUnique({ where: { id: unidadId }, select: { id: true } })))) return { error: "La unidad no existe." };
+  return prepararFoto(s.tenantId, unidadId, a);
+}
+
+export async function confirmarFotoUnidadAccion(unidadId: string, ruta: string): Promise<{ error?: string; ok?: true }> {
+  const s = await gestionar();
+  const r = await confirmarFoto(s.tenantId, unidadId, ruta, (nueva) => withTenant(s.tenantId, async (tx) => {
+    const u = await tx.unidadTransporte.findUnique({ where: { id: unidadId }, select: { fotoRuta: true } });
+    if (!u) return undefined;
+    await tx.unidadTransporte.update({ where: { id: unidadId }, data: { fotoRuta: nueva } });
+    return u.fotoRuta;
+  }));
+  refrescar();
+  return r;
+}
+
+export async function quitarFotoUnidadAccion(unidadId: string): Promise<{ error?: string; ok?: true }> {
+  const s = await gestionar();
+  const anterior = await withTenant(s.tenantId, async (tx) => {
+    const u = await tx.unidadTransporte.findUnique({ where: { id: unidadId }, select: { fotoRuta: true } });
+    if (!u) return undefined;
+    await tx.unidadTransporte.update({ where: { id: unidadId }, data: { fotoRuta: null } });
+    return u.fotoRuta;
+  });
+  if (anterior === undefined) return { error: "La unidad no existe." };
+  await borrarFoto(anterior);
+  refrescar();
+  return { ok: true };
 }
