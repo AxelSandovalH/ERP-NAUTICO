@@ -183,6 +183,8 @@ export function Landing() {
               <h2 className="mt-2 text-3xl font-semibold tracking-tight md:text-4xl">Elige el que crece contigo</h2>
               <p className="mt-4 text-muted">Todos empiezan con {DIAS_PRUEBA} días de prueba gratis. Precios mensuales en pesos mexicanos, más IVA.</p>
             </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/fleetnautic-producto.png" alt="FleetNautic: software para operadores náuticos, desde $6,000 MXN al mes más IVA" width={1200} height={630} className="mx-auto mt-10 w-full max-w-xl rounded-2xl border border-line shadow-sm" />
             <div className="mt-12 grid gap-6 lg:grid-cols-3">
               {planes.map(({ id, def, d }) => {
                 const destacado = id === "GESTION";
