@@ -77,3 +77,8 @@ export function desglosePlan(precioMxn: number) {
   const iva = Math.round((precio + cargo) * TASA_IVA_SUSCRIPCION);
   return { precioCentavos: precio, cargoCentavos: cargo, ivaCentavos: iva, totalCentavos: precio + cargo + iva };
 }
+
+/** Orden de los planes de pago, de menor a mayor. */
+export const ORDEN_PLANES: PlanPago[] = ["CONTROL", "GESTION", "ENTERPRISE"];
+/** ¿Pasar de `actual` a `nuevo` sube de plan? */
+export const esMejora = (actual: PlanPago, nuevo: PlanPago) => ORDEN_PLANES.indexOf(nuevo) > ORDEN_PLANES.indexOf(actual);

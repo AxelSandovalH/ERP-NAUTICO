@@ -10,7 +10,9 @@ import { Campo, Card, Input, Insignia, PageHeader, Select, Tabla, Td, Th } from 
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { alternarUsuario, crearUsuario, guardarModulos } from "./actions";
-import { abrirPortalAccion, iniciarSuscripcionAccion } from "./suscripcion-actions";
+import { abrirPortalAccion, cambiarPlanAccion, iniciarSuscripcionAccion } from "./suscripcion-actions";
+import { modulosQueSePierden } from "@/lib/stripe/cambio-plan";
+import { esMejora, esPlanPago, type PlanPago } from "@/lib/stripe/suscripcion";
 import { stripeConfigurado } from "@/lib/stripe/cliente";
 import { diaLocal, fechaLarga } from "@/lib/fechas";
 import { TASA_CARGO, TASA_IVA_SUSCRIPCION, desglosePlan } from "@/lib/stripe/suscripcion";
@@ -81,6 +83,13 @@ export default async function ConfiguracionPage({ searchParams }: { searchParams
                     );
                   })}
                 </ul>
+                {cobro && tenant.estadoSuscripcion === "ACTIVA" && !!tenant.stripeSubscriptionId && !tenant.cancelaAlFinal && !actual && esPlanPago(tenant.plan) && (() => {
+                  const hoy = tenant.plan as PlanPago, nuevo = id as PlanPago, sube = esMejora(hoy, nuevo), pierde = sube ? [] : modulosQueSePierden(hoy, nuevo), d = desglosePlan(plan.precioMxnMensual ?? 0);
+                  const aviso = sube
+                    ? `Cambiarás a ${plan.nombre} ahora. Se cobrará hoy la diferencia proporcional de lo que resta del mes y después pagarás ${dinero(d.totalCentavos, "MXN")} al mes (con cargo e IVA).`
+                    : `Cambiarás a ${plan.nombre} ahora.${pierde.length ? ` Perderás el acceso a: ${pierde.join(", ")} (tus datos se conservan).` : ""} La diferencia proporcional queda como saldo a favor en tu próxima factura y después pagarás ${dinero(d.totalCentavos, "MXN")} al mes (con cargo e IVA).`;
+                  return <div className="mt-4"><BotonAccion variante={sube ? "primario" : "suave"} etiqueta={`${sube ? "Subir" : "Bajar"} a ${plan.nombre}`} confirmar={aviso} accion={cambiarPlanAccion.bind(null, id)} /></div>;
+                })()}
                 {cobro && !suscrita && (
                   <div className="mt-4"><Formulario accion={iniciarSuscripcionAccion.bind(null, id)} enviar={`Suscribirme a ${plan.nombre}`}><span /></Formulario></div>
                 )}

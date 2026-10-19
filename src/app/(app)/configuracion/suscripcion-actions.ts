@@ -7,6 +7,9 @@ import { puede } from "@/modules/permisos";
 import { origenActual } from "@/lib/origen";
 import { stripe, stripeConfigurado } from "@/lib/stripe/cliente";
 import { asegurarPrecioCargo, asegurarPrecioPlan, asegurarTasaIva } from "@/lib/stripe/catalogo";
+import { ErrorCambioPlan, cambiarPlanEnStripe } from "@/lib/stripe/cambio-plan";
+import { aSuscripcionMin, sincronizarSuscripcion } from "@/lib/stripe/sincronizar";
+import { revalidatePath } from "next/cache";
 import type { EstadoForm } from "@/components/formulario";
 
 const planSchema = z.enum(["CONTROL", "GESTION", "ENTERPRISE"]);
@@ -79,4 +82,28 @@ export async function abrirPortalAccion(_: EstadoForm): Promise<EstadoForm> {
     return { error: "No se pudo abrir el portal de pagos. Intenta de nuevo." };
   }
   redirect(url);
+}
+
+/** Cambia de plan una suscripción activa, sin salir de la app. Devuelve {error} para que la pantalla avise por qué no se hizo. */
+export async function cambiarPlanAccion(plan: string) {
+  const s = await admin();
+  const p = planSchema.safeParse(plan);
+  if (!p.success) return { error: "Plan inválido." };
+  const t = await prisma.tenant.findUniqueOrThrow({ where: { id: s.tenantId } });
+  if (!t.stripeSubscriptionId) return { error: "Aún no tienes una suscripción: contrata un plan." };
+  if (t.estadoSuscripcion === "PAGO_PENDIENTE") return { error: "Tienes un pago pendiente. Actualiza tu método de pago en «Administrar suscripción» antes de cambiar de plan." };
+  if (t.estadoSuscripcion !== "ACTIVA") return { error: "Tu suscripción no está activa." };
+  try {
+    const actualizada = await cambiarPlanEnStripe(stripe(), t.stripeSubscriptionId, p.data);
+    // Se refleja de inmediato; el webhook que llega después repite lo mismo sin dañar nada
+    await sincronizarSuscripcion(prisma, aSuscripcionMin(actualizada));
+  } catch (e) {
+    if (e instanceof ErrorCambioPlan) return { error: e.message };
+    const tipo = (e as { type?: string }).type;
+    console.error("[stripe] cambio de plan:", e);
+    if (tipo === "StripeCardError") return { error: "No se pudo cobrar la diferencia con tu tarjeta, así que el plan no cambió. Revisa tu método de pago en «Administrar suscripción»." };
+    return { error: "No se pudo cambiar de plan. Intenta de nuevo en un momento." };
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
 }

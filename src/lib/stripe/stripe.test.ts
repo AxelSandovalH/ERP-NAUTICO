@@ -155,3 +155,67 @@ describe("la suscripción con dos renglones", () => {
     expect(aSuscripcionMin(sub([item(null, 9)])).lookupKey).toBeNull();
   });
 });
+
+import { cambiarPlanEnStripe, ErrorCambioPlan, modulosQueSePierden } from "./cambio-plan";
+import { esMejora } from "./suscripcion";
+
+describe("cambio de plan", () => {
+  it("subir o bajar según el orden de los planes", () => {
+    expect(esMejora("CONTROL", "GESTION")).toBe(true);
+    expect(esMejora("CONTROL", "ENTERPRISE")).toBe(true);
+    expect(esMejora("ENTERPRISE", "GESTION")).toBe(false);
+    expect(esMejora("GESTION", "CONTROL")).toBe(false);
+  });
+  it("al bajar se listan los módulos que se pierden, sin el núcleo ni lo que Cuentas trae implícito", () => {
+    const de = modulosQueSePierden("ENTERPRISE", "CONTROL");
+    expect(de).toEqual(expect.arrayContaining(["Conciliación bancaria", "Nómina", "Comisiones", "Inventario", "Transporte", "Facturación"]));
+    expect(de).not.toContain("Horarios"); // Control también lo incluye
+    expect(modulosQueSePierden("CONTROL", "ENTERPRISE")).toEqual([]);
+    expect(modulosQueSePierden("GESTION", "CONTROL")).toEqual(expect.arrayContaining(["Inventario", "Transporte", "Facturación", "Equipo"]));
+  });
+
+  /** Stripe de mentira con una suscripción de dos renglones. */
+  function conSuscripcion(o: { status?: string; cancelar?: boolean; sinCargo?: boolean; plan?: string } = {}) {
+    const f = stripeFalso();
+    const actual = o.plan ?? "fleetnautic_control_mensual";
+    const items = [{ id: "si_plan", price: { lookup_key: actual } }, ...(o.sinCargo ? [] : [{ id: "si_cargo", price: { lookup_key: actual.replace("_mensual", "_cargo") } }])];
+    const llamadas: { id: string; params: Record<string, unknown>; opciones: Record<string, unknown> }[] = [];
+    (f.stripe as unknown as Record<string, unknown>).subscriptions = {
+      retrieve: async () => ({ id: "sub_1", status: o.status ?? "active", cancel_at_period_end: !!o.cancelar, metadata: { tenantId: "t1" }, items: { data: items } }),
+      update: async (id: string, params: Record<string, unknown>, opciones: Record<string, unknown>) => { llamadas.push({ id, params, opciones }); return { id, ...params }; },
+    };
+    return { stripe: f.stripe, llamadas };
+  }
+
+  it("subir de plan: cambia los dos renglones, cobra la diferencia ya y no deja la suscripción a medias si falla el cobro", async () => {
+    const { stripe, llamadas } = conSuscripcion();
+    await cambiarPlanEnStripe(stripe, "sub_1", "GESTION");
+    const { params, opciones } = llamadas[0];
+    expect(params).toMatchObject({ proration_behavior: "always_invoice", payment_behavior: "error_if_incomplete", metadata: { tenantId: "t1", plan: "GESTION" } });
+    const items = params.items as { id?: string; price: string; tax_rates: string[] }[];
+    expect(items.map((i) => i.id)).toEqual(["si_plan", "si_cargo"]);
+    expect(items.every((i) => i.tax_rates.length === 1)).toBe(true);
+    expect(String(opciones.idempotencyKey)).toMatch(/^cambio-sub_1-CONTROL-GESTION-/);
+  });
+  it("bajar de plan: la diferencia queda como saldo a favor, sin cobrar", async () => {
+    const { stripe, llamadas } = conSuscripcion({ plan: "fleetnautic_enterprise_mensual" });
+    await cambiarPlanEnStripe(stripe, "sub_1", "CONTROL");
+    expect(llamadas[0].params).toMatchObject({ proration_behavior: "create_prorations" });
+  });
+  it("una suscripción anterior al cargo recibe ese renglón nuevo", async () => {
+    const { stripe, llamadas } = conSuscripcion({ sinCargo: true });
+    await cambiarPlanEnStripe(stripe, "sub_1", "GESTION");
+    const items = llamadas[0].params.items as { id?: string }[];
+    expect(items).toHaveLength(2);
+    expect(items[1].id).toBeUndefined();
+  });
+  it("rechaza el mismo plan, una suscripción inactiva o programada para cancelarse, sin llamar a actualizar", async () => {
+    for (const [o, plan, texto] of [[{}, "CONTROL", /Ya estás/], [{ status: "past_due" }, "GESTION", /no está activa/], [{ cancelar: true }, "GESTION", /cancelarse/]] as const) {
+      const { stripe, llamadas } = conSuscripcion(o);
+      await expect(cambiarPlanEnStripe(stripe, "sub_1", plan)).rejects.toThrow(texto);
+      expect(llamadas).toHaveLength(0);
+    }
+    const raro = conSuscripcion({ plan: "producto_ajeno" });
+    await expect(cambiarPlanEnStripe(raro.stripe, "sub_1", "GESTION")).rejects.toThrow(ErrorCambioPlan);
+  });
+});
