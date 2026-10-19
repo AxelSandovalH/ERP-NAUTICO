@@ -1,4 +1,5 @@
 import type { Receptor } from "@/lib/facturacion/impuestos";
+import type { CfdiRecibido } from "@/lib/facturacion/recibidas";
 
 // Cliente HTTP de Procura (servidor a servidor). Nunca registra ni devuelve la llave; traduce los errores a mensajes seguros.
 
@@ -11,6 +12,7 @@ export class ErrorProcura extends Error {
 export type VentaProcura = { id: string; folio: string | null; externalRef: string | null; lineIds: string[]; cfdi: CfdiProcura | null };
 export type CfdiProcura = { id: string; uuid: string | null; estadoSat: string | null };
 export type DescargasCfdi = { xmlUrl: string | null; pdfUrl: string | null };
+export type { CfdiRecibido } from "@/lib/facturacion/recibidas";
 
 export interface ApiProcura {
   crearVenta(e: { externalRef: string; folio?: string; fecha: string; descripcion: string; subtotalCentavos: number; tasaIva: number; notas?: string }, idempotencia: string): Promise<VentaProcura>;
@@ -19,6 +21,9 @@ export interface ApiProcura {
   obtenerCfdi(cfdiId: string): Promise<CfdiProcura & DescargasCfdi>;
   cancelar(cfdiId: string, e: { motivo: "01" | "02" | "03"; uuidSustituto?: string }, idempotencia: string): Promise<{ estadoSat: string | null }>;
   refrescarEstado(cfdiId: string): Promise<{ estadoSat: string | null }>;
+  /** Facturas que le emitieron a la organización (incluidas las que Procura baja del SAT), de la más nueva a la más vieja. */
+  listarRecibidas(e: { desde?: string; hasta?: string; maximo?: number }): Promise<CfdiRecibido[]>;
+  obtenerRecibida(cfdiId: string): Promise<CfdiRecibido | null>;
   probarConexion(): Promise<{ ok: boolean; mensaje?: string }>;
 }
 
@@ -41,6 +46,16 @@ export function leerVenta(v: unknown): VentaProcura {
   const lineIds = (Array.isArray(o.lines) ? o.lines : []).map((l) => str(obj(l).id)).filter((x): x is string => !!x);
   const cfdis = (Array.isArray(o.cfdi) ? o.cfdi : []).map((c) => leerCfdi(obj(c).cfdi ?? c)).filter((x): x is CfdiProcura => !!x);
   return { id, folio: str(o.folio), externalRef: str(o.external_ref), lineIds, cfdi: cfdis[cfdis.length - 1] ?? null };
+}
+
+const num = (v: unknown): number | null => { const n = typeof v === "number" ? v : typeof v === "string" && v.trim() ? Number(v) : NaN; return Number.isFinite(n) ? n : null; };
+
+/** Un CFDI recibido tal como lo expone Procura (columnas en snake_case; el importe puede venir como número o texto). Null si no sirve. */
+export function leerRecibida(v: unknown): CfdiRecibido | null {
+  const o = obj(v), id = str(o.id), uuid = str(o.fiscal_uuid) ?? str(o.uuid), total = num(o.total_minor), emitido = str(o.issued_at);
+  if (!id || !uuid || total === null || !emitido || !/^\d{4}-\d{2}-\d{2}/.test(emitido)) return null;
+  if (str(o.direction) && str(o.direction) !== "RECEIVED") return null;
+  return { id, uuid, rfcEmisor: str(o.issuer_rfc) ?? "", nombreEmisor: str(o.issuer_name), totalCentavos: Math.round(total), moneda: str(o.currency) ?? "MXN", emitidoEn: emitido.slice(0, 10), tipo: str(o.cfdi_type), estadoSat: str(o.sat_status) };
 }
 
 async function problema(res: Response): Promise<{ codigo: string | null; detalle: string | null }> {
@@ -116,6 +131,25 @@ export function crearClienteProcura(cfg: { baseUrl: string; llave: string; fetch
     async refrescarEstado(cfdiId) {
       const { json } = await llamar("POST", `/cfdi/${encodeURIComponent(cfdiId)}/refresh-status`, { idempotencia: crypto.randomUUID(), cuerpo: {} });
       return { estadoSat: leerCfdi(json)?.estadoSat ?? str(obj(json).sat_status) };
+    },
+    async listarRecibidas(e) {
+      const todas: CfdiRecibido[] = [];
+      let cursor: string | null = null;
+      const tope = e.maximo ?? 400;
+      // Paginación por cursor (hasta 200 por página); se corta al llegar al tope para no cargar años de historia
+      for (let pagina = 0; pagina < 10 && todas.length < tope; pagina++) {
+        const q = new URLSearchParams({ direction: "RECEIVED", limit: "200", ...(e.desde ? { from: e.desde } : {}), ...(e.hasta ? { to: e.hasta } : {}), ...(cursor ? { cursor } : {}) });
+        const { json } = await llamar("GET", `/cfdi?${q}`);
+        const o = obj(json);
+        for (const x of Array.isArray(o.data) ? o.data : []) { const c = leerRecibida(x); if (c) todas.push(c); }
+        cursor = str(o.next_cursor);
+        if (!cursor) break;
+      }
+      return todas.slice(0, tope);
+    },
+    async obtenerRecibida(cfdiId) {
+      const { json } = await llamar("GET", `/cfdi/${encodeURIComponent(cfdiId)}`);
+      return leerRecibida(json);
     },
     async probarConexion() {
       try { await llamar("GET", "/fiscal/provider"); return { ok: true }; }

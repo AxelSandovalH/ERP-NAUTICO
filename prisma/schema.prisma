@@ -95,6 +95,8 @@ model Tenant {
 
   conexionProcura  ConexionProcura?
   facturasEmitidas FacturaEmitida[]
+
+  gastosCfdi GastoCfdi[]
 }
 
 model Usuario {
@@ -829,6 +831,8 @@ model Gasto {
   trasladoId String?
   traslado   Traslado? @relation(fields: [trasladoId], references: [id], onDelete: SetNull)
 
+  cfdi GastoCfdi?
+
   @@index([tenantId, fecha])
   @@index([cuentaId])
   @@index([embarcacionId])
@@ -1314,4 +1318,26 @@ model FacturaEmitida {
   @@index([tenantId, estado])
   @@index([reservaId])
   @@index([trasladoId])
+}
+
+// La factura recibida (CFDI de un proveedor, traída de Procura) que respalda un gasto. Una factura respalda un solo gasto.
+model GastoCfdi {
+  id            String   @id @default(cuid())
+  tenantId      String
+  tenant        Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  gastoId       String   @unique
+  gasto         Gasto    @relation(fields: [gastoId], references: [id], onDelete: Cascade)
+  procuraCfdiId String
+  uuid          String
+  rfcEmisor     String
+  nombreEmisor  String?
+  // En la moneda del propio CFDI (coincide con la del gasto)
+  totalCentavos Int
+  moneda        String
+  emitidoEn     DateTime @db.Date
+  ligadoPorId   String?
+  creadoEn      DateTime @default(now())
+
+  @@unique([tenantId, uuid])
+  @@index([tenantId])
 }

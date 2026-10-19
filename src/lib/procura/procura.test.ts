@@ -126,6 +126,23 @@ describe("cliente HTTP de Procura", () => {
     const e = (await caso(502, { detail: "token pk_live_abc" })) as ErrorProcura;
     expect(e.message).not.toContain("pk_live");
   });
+  it("listar recibidas pagina por cursor, usa los filtros de fecha y descarta lo que no es una factura recibida", async () => {
+    const f1 = { id: "a", fiscal_uuid: "UA", total_minor: "100", issued_at: "2026-10-01", direction: "RECEIVED" }, f2 = { id: "b", fiscal_uuid: "UB", total_minor: 200, issued_at: "2026-10-02" };
+    const { f, llamadas } = falso([{ estado: 200, cuerpo: { data: [f1, { id: "basura" }], next_cursor: "c2" } }, { estado: 200, cuerpo: { data: [f2], next_cursor: null } }]);
+    const r = await nueva(f).listarRecibidas({ desde: "2026-09-01", hasta: "2026-10-31" });
+    expect(r.map((x) => x.uuid)).toEqual(["UA", "UB"]);
+    expect(llamadas).toHaveLength(2);
+    expect(llamadas[0].url).toContain("direction=RECEIVED");
+    expect(llamadas[0].url).toContain("from=2026-09-01");
+    expect(llamadas[1].url).toContain("cursor=c2");
+  });
+  it("listar recibidas respeta el tope y obtenerRecibida lee una sola", async () => {
+    const pagina = (n: number) => ({ estado: 200, cuerpo: { data: Array.from({ length: 3 }, (_, i) => ({ id: `${n}${i}`, fiscal_uuid: `U${n}${i}`, total_minor: 1, issued_at: "2026-10-01" })), next_cursor: `c${n + 1}` } });
+    const { f } = falso([pagina(1), pagina(2), pagina(3)]);
+    expect(await nueva(f).listarRecibidas({ maximo: 5 })).toHaveLength(5);
+    const uno = falso([{ estado: 200, cuerpo: { id: "z", fiscal_uuid: "UZ", total_minor: 9, issued_at: "2026-10-05" } }]);
+    expect(await nueva(uno.f).obtenerRecibida("z")).toMatchObject({ uuid: "UZ", totalCentavos: 9 });
+  });
   it("un fallo de red es transitorio y la prueba de conexión no lanza", async () => {
     const f = (async () => { throw new Error("ECONNRESET"); }) as unknown as typeof fetch;
     const api = nueva(f);

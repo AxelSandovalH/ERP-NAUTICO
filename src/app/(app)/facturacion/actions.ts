@@ -5,6 +5,9 @@ import { z } from "zod";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { ErrorFacturacion, apiDeEmpresa, cancelarFactura, refrescarFactura, solicitarFactura, type Deps, type Origen } from "@/lib/facturacion/servicio";
+import { ErrorRecibidas, desligarFactura, ligarFactura } from "@/lib/facturacion/recibidas-servicio";
+import type { CfdiRecibido } from "@/lib/facturacion/recibidas";
+import { ErrorProcura } from "@/lib/procura/cliente";
 import { errorDeReceptor, normalizarRfc, type Receptor } from "@/lib/facturacion/impuestos";
 import type { EstadoForm } from "@/components/formulario";
 
@@ -87,4 +90,55 @@ export async function cancelarAccion(id: string, _: EstadoForm, fd: FormData): P
   const r = await conErrores(async () => { await cancelarFactura(await dependencias(s), id, { motivo: p.data.motivo, uuidSustituto: p.data.uuidSustituto }); return { ok: "Cancelación solicitada. El SAT la confirma en unos minutos u horas." } as EstadoForm; });
   refrescar();
   return r;
+}
+
+/**
+ * Liga las facturas elegidas a sus gastos (campos `g_<gastoId>` = id del CFDI en Procura). Los datos de cada factura se piden de nuevo a Procura:
+ * lo que mande el navegador solo dice CUÁL factura, nunca su importe ni su RFC. Todo en una transacción con un punto de guardado por gasto.
+ */
+export async function ligarRecibidasAccion(_: EstadoForm, fd: FormData): Promise<EstadoForm> {
+  const s = await emitir();
+  const elegidas = [...fd.entries()].filter((e): e is [string, string] => e[0].startsWith("g_") && typeof e[1] === "string" && !!e[1]).map(([k, v]) => ({ gastoId: k.slice(2), cfdiId: v }));
+  if (elegidas.length === 0) return { error: "No elegiste ninguna factura." };
+  const errores: string[] = [];
+  let ligadas = 0;
+  try {
+    const api = await withTenant(s.tenantId, (tx) => apiDeEmpresa(tx, s.tenantId));
+    const datos: { gastoId: string; cfdi: CfdiRecibido }[] = [];
+    for (const e of elegidas) {
+      const cfdi = await api.obtenerRecibida(e.cfdiId);
+      if (cfdi) datos.push({ gastoId: e.gastoId, cfdi }); else errores.push("Una factura ya no está disponible en Procura.");
+    }
+    await withTenant(s.tenantId, async (tx) => {
+      let n = 0;
+      for (const d of datos) {
+        const punto = `liga_${n++}`;
+        await tx.$executeRawUnsafe(`SAVEPOINT ${punto}`);
+        try { await ligarFactura(tx, s.tenantId, { ...d, usuarioId: s.usuarioId }); await tx.$executeRawUnsafe(`RELEASE SAVEPOINT ${punto}`); ligadas++; }
+        catch (e) {
+          await tx.$executeRawUnsafe(`ROLLBACK TO SAVEPOINT ${punto}`);
+          if (!(e instanceof ErrorRecibidas) && (e as { code?: string }).code !== "P2002") throw e;
+          errores.push((e as Error).message);
+        }
+      }
+    }, { timeoutMs: 60_000 });
+  } catch (e) {
+    if (e instanceof ErrorFacturacion || e instanceof ErrorProcura) return { error: e.message };
+    throw e;
+  }
+  refrescar();
+  revalidatePath("/gastos", "layout");
+  if (errores.length) return { error: `${ligadas ? `${ligadas} ligada${ligadas === 1 ? "" : "s"}. ` : ""}${errores.length} con problema: ${[...new Set(errores)].slice(0, 2).join(" ")}` };
+  return { ok: `${ligadas} factura${ligadas === 1 ? "" : "s"} ligada${ligadas === 1 ? "" : "s"}.` };
+}
+
+export async function desligarRecibidaAccion(gastoId: string) {
+  const s = await emitir();
+  try { await withTenant(s.tenantId, (tx) => desligarFactura(tx, gastoId)); } catch (e) {
+    if (e instanceof ErrorRecibidas) return { error: e.message };
+    throw e;
+  }
+  refrescar();
+  revalidatePath("/gastos", "layout");
+  return { ok: true };
 }

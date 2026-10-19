@@ -4,6 +4,7 @@ import { withTenant } from "@/lib/db/tenant";
 import { aDate, aIso, dinero, hoyIso, sumarDias, diaLocal } from "@/lib/fechas";
 import { puede } from "@/modules/permisos";
 import { ESTADOS_FACTURA, TONO_FACTURA, desglosarIva } from "@/lib/facturacion/impuestos";
+import { SubnavFacturacion } from "@/components/facturacion/subnav";
 import { BotonLink, Card, Insignia, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 
 export const metadata = { title: "Facturación · ERP Náutico" };
@@ -37,6 +38,7 @@ export default async function FacturacionPage({ searchParams }: { searchParams: 
   return (
     <>
       <PageHeader titulo="Facturación" sub="CFDI de tus reservas y traslados cobrados" />
+      <SubnavFacturacion activo="/facturacion" />
       {!d.conexion?.activa ? (
         <Card className="mb-6 border-amber-300 bg-amber-50 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           <strong>La facturación aún no está conectada.</strong> Avisa a soporte para activar tu conexión con Procura y dar de alta tu emisor fiscal. Mientras tanto puedes capturar los datos fiscales de tus clientes.

@@ -7,6 +7,9 @@ import { crearReservaTx } from "@/lib/reservas/crear";
 import { asegurarCategoriasBase } from "@/lib/finanzas/servicio";
 import { cifrar } from "@/lib/procura/cifrado";
 import { ErrorProcura, type ApiProcura, type CfdiProcura, type VentaProcura } from "@/lib/procura/cliente";
+import { ErrorRecibidas, desligarFactura, gastosPendientesDeFactura, ligarFactura, uuidsLigados } from "@/lib/facturacion/recibidas-servicio";
+import type { CfdiRecibido } from "@/lib/facturacion/recibidas";
+import { registrarGasto } from "@/lib/finanzas/servicio";
 import { ErrorFacturacion, apiDeEmpresa, cancelarFactura, datosParaFacturar, refrescarFactura, solicitarFactura, type Deps } from "@/lib/facturacion/servicio";
 import type { Receptor } from "@/lib/facturacion/impuestos";
 
@@ -43,6 +46,8 @@ class FalsaProcura implements ApiProcura {
   async obtenerCfdi(id: string) { return { id, uuid: "U", estadoSat: this.estadoSat, xmlUrl: "https://x/xml", pdfUrl: "https://x/pdf" }; }
   async cancelar() { this.llamadas.push("cancelar"); this.estadoSat = "CANCELANDO"; return { estadoSat: "CANCELANDO" }; }
   async refrescarEstado() { return { estadoSat: this.estadoSat }; }
+  async listarRecibidas() { return []; }
+  async obtenerRecibida() { return null; }
   async probarConexion() { return { ok: true }; }
 }
 
@@ -205,5 +210,72 @@ describe("conexión y aislamiento", () => {
     expect((await facturas(A)).every((f) => f.tenantId === A.t)).toBe(true);
     expect(await withTenant(A.t, (tx) => tx.conexionProcura.findMany())).toHaveLength(1);
     await expect(withTenant(A.t, (tx) => datosParaFacturar(tx, { tipo: "RESERVA", id: B.reserva }))).rejects.toThrow(/no existe/);
+  });
+});
+
+describe("facturas recibidas ligadas a gastos", () => {
+  const cfdi = (id: string, o: Partial<CfdiRecibido> = {}): CfdiRecibido => ({ id, uuid: `UUID-${id}`, rfcEmisor: "AAA010101AAA", nombreEmisor: "Pemex Marina SA", totalCentavos: 62_000, moneda: "MXN", emitidoEn: "2031-08-12", tipo: "I", estadoSat: "VIGENTE", ...o });
+  async function conGasto(nombre: string, o: { requiere?: boolean; monto?: number } = {}) {
+    const T = await crearTenant(nombre);
+    const gasto = await withTenant(T.t, async (tx) => {
+      const cuenta = await tx.cuenta.create({ data: { tenantId: T.t, nombre: "Banco", tipo: "BANCO", moneda: "MXN", saldoInicialCentavos: 1_000_000 } });
+      return registrarGasto(tx, T.t, { concepto: "Gasolina", proveedor: "Pemex Marina", cuentaId: cuenta.id, fecha: F, montoCentavos: o.monto ?? 62_000, requiereFactura: o.requiere ?? true });
+    });
+    return { T, gasto };
+  }
+  const ligar = (T: Ctx, gastoId: string, c: CfdiRecibido) => withTenant(T.t, (tx) => ligarFactura(tx, T.t, { gastoId, cfdi: c, usuarioId: "u1" }));
+
+  it("solo los gastos activos que requieren factura y no la tienen aparecen como pendientes", async () => {
+    const { T, gasto } = await conGasto("r1");
+    await withTenant(T.t, async (tx) => {
+      const cuenta = await tx.cuenta.findFirstOrThrow();
+      await registrarGasto(tx, T.t, { concepto: "Sin factura", cuentaId: cuenta.id, fecha: F, montoCentavos: 1_000, requiereFactura: false });
+    });
+    expect((await withTenant(T.t, (tx) => gastosPendientesDeFactura(tx))).map((g) => g.id)).toEqual([gasto.id]);
+    await ligar(T, gasto.id, cfdi("c1"));
+    expect(await withTenant(T.t, (tx) => gastosPendientesDeFactura(tx))).toHaveLength(0);
+    expect([...(await withTenant(T.t, (tx) => uuidsLigados(tx)))]).toEqual(["UUID-c1"]);
+  });
+  it("liga con una diferencia de hasta $1.00 y guarda los datos de la factura", async () => {
+    const { T, gasto } = await conGasto("r2");
+    const l = await ligar(T, gasto.id, cfdi("c2", { totalCentavos: 62_100 }));
+    expect(l).toMatchObject({ gastoId: gasto.id, uuid: "UUID-c2", rfcEmisor: "AAA010101AAA", totalCentavos: 62_100, moneda: "MXN" });
+  });
+  it("rechaza importe distinto, otra moneda, facturas canceladas o de otro tipo, y gastos cancelados", async () => {
+    const { T, gasto } = await conGasto("r3");
+    await expect(ligar(T, gasto.id, cfdi("x", { totalCentavos: 99_000 }))).rejects.toThrow(/no coincide/);
+    await expect(ligar(T, gasto.id, cfdi("x", { moneda: "USD" }))).rejects.toThrow(/USD/);
+    await expect(ligar(T, gasto.id, cfdi("x", { estadoSat: "CANCELADO" }))).rejects.toThrow(/ingreso vigente/);
+    await expect(ligar(T, gasto.id, cfdi("x", { tipo: "P" }))).rejects.toThrow(/ingreso vigente/);
+    await withTenant(T.t, (tx) => tx.gasto.update({ where: { id: gasto.id }, data: { estado: "CANCELADO" } }));
+    await expect(ligar(T, gasto.id, cfdi("x"))).rejects.toThrow(/cancelado/);
+    await expect(ligar(T, "inexistente", cfdi("x"))).rejects.toThrow(/no existe/);
+  });
+  it("un gasto tiene una sola factura y una factura respalda un solo gasto", async () => {
+    const { T, gasto } = await conGasto("r4");
+    await ligar(T, gasto.id, cfdi("c4"));
+    await expect(ligar(T, gasto.id, cfdi("c5"))).rejects.toThrow(/ya tiene una factura/);
+    const otro = await withTenant(T.t, async (tx) => registrarGasto(tx, T.t, { concepto: "Otro", cuentaId: (await tx.cuenta.findFirstOrThrow()).id, fecha: F, montoCentavos: 62_000, requiereFactura: true }));
+    await expect(ligar(T, otro.id, cfdi("c4"))).rejects.toThrow(/ya respalda otro gasto/);
+  });
+  it("desligar libera la factura para otro gasto; sin vínculo avisa", async () => {
+    const { T, gasto } = await conGasto("r5");
+    await ligar(T, gasto.id, cfdi("c6"));
+    await withTenant(T.t, (tx) => desligarFactura(tx, gasto.id));
+    await expect(withTenant(T.t, (tx) => desligarFactura(tx, gasto.id))).rejects.toThrow(ErrorRecibidas);
+    await ligar(T, gasto.id, cfdi("c6")); // la misma factura vuelve a poder ligarse
+  });
+  it("dos ligas simultáneas de la misma factura: solo una gana", async () => {
+    const { T, gasto } = await conGasto("r6");
+    const otro = await withTenant(T.t, async (tx) => registrarGasto(tx, T.t, { concepto: "Otro", cuentaId: (await tx.cuenta.findFirstOrThrow()).id, fecha: F, montoCentavos: 62_000, requiereFactura: true }));
+    const r = await Promise.allSettled([ligar(T, gasto.id, cfdi("c7")), ligar(T, otro.id, cfdi("c7"))]);
+    expect(r.filter((x) => x.status === "fulfilled")).toHaveLength(1);
+    expect(await withTenant(T.t, (tx) => tx.gastoCfdi.count())).toBe(1);
+  });
+  it("aislamiento: una empresa no ve los vínculos de otra (RLS)", async () => {
+    const { T, gasto } = await conGasto("r7");
+    await ligar(T, gasto.id, cfdi("c8"));
+    expect(await withTenant(A.t, (tx) => tx.gastoCfdi.count({ where: { uuid: "UUID-c8" } }))).toBe(0);
+    await expect(withTenant(A.t, (tx) => ligarFactura(tx, A.t, { gastoId: gasto.id, cfdi: cfdi("c9") }))).rejects.toThrow(/no existe/);
   });
 });

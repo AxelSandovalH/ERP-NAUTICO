@@ -81,4 +81,11 @@ Hecho, probado contra una Procura simulada (no contra la real):
 - Pantallas: Facturación (por facturar y emitidas), Facturar, detalle (descargas, consultar estado, reintentar, cancelar) y tarjeta «Factura» en reservas y traslados.
 - `npm run procura:conectar` conecta una empresa (la llave se lee del entorno, nunca como argumento).
 
+Etapa 2 (recibidas), hecho y probado contra una Procura simulada:
+- `GastoCfdi` liga una factura recibida con un gasto (una factura respalda un solo gasto; un gasto, una sola factura).
+- `Facturación → Recibidas`: lista los gastos «requiere factura» sin factura y propone la pareja (mismo importe ±$1, misma moneda, de 7 días antes a 60 después, proveedor parecido). La persona confirma.
+- Los datos de la factura se piden de nuevo a Procura al ligar (el navegador solo dice cuál); en una transacción con un punto de guardado por gasto.
+- El detalle del gasto muestra la factura ligada y permite quitar el vínculo.
+- Procura se consulta por `GET /cfdi?direction=RECEIVED` con cursor y fechas; los CFDI que no son de ingreso o están cancelados no se ofrecen.
+
 Pendiente de Procura (prompt de la Etapa 1): `external_ref` y `folio` en `POST /sales`, emisión repetida sin error ambiguo, respuesta de emisión estable, webhooks `cfdi.*`, rol de integración y errores documentados. Mientras tanto FleetNautic usa los endpoints actuales; la búsqueda por referencia solo se acepta si Procura devuelve exactamente esa referencia.
