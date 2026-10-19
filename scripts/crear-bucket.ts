@@ -18,4 +18,15 @@ async function main() {
   console.log(`Bucket privado "${BUCKET}" creado.`);
 }
 
-main().catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });
+// Bucket PÚBLICO de fotos de embarcaciones (5 MB, JPG/PNG/WebP)
+async function fotos() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const admin = createClient(url!, key!, { auth: { autoRefreshToken: false, persistSession: false } });
+  const { data } = await admin.storage.getBucket("fotos-flota");
+  if (data) { console.log('El bucket "fotos-flota" ya existe.'); return; }
+  const { error } = await admin.storage.createBucket("fotos-flota", { public: true, fileSizeLimit: 5 * 1024 * 1024, allowedMimeTypes: ["image/jpeg", "image/png", "image/webp"] });
+  if (error) throw error;
+  console.log('Bucket público "fotos-flota" creado.');
+}
+
+main().then(fotos).catch((e) => { console.error(e instanceof Error ? e.message : e); process.exit(1); });

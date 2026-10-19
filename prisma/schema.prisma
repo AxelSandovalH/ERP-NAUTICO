@@ -149,6 +149,8 @@ model Embarcacion {
   color                String            @default("#0ea5e9") // color en el calendario
   estado               EstadoEmbarcacion @default(ACTIVA)
   notas                String?
+  // Foto principal: ruta dentro del bucket público "fotos-flota" (<tenantId>/<embarcacionId>/<id>.jpg)
+  fotoRuta             String?
   // "Precio casa": lo mínimo que la empresa debe recibir por un tour. Base de
   // las comisiones PORCENTAJE_BALANCE (venta − costo base). null = sin configurar.
   precioCasaCentavos   Int?

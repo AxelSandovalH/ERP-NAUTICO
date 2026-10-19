@@ -3,6 +3,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
 import { BotonLink, Card, Insignia, PageHeader, Vacio } from "@/components/ui";
+import { urlFoto } from "@/lib/storage/reglas";
 import { ESTADOS_EMBARCACION, TIPOS_EMBARCACION } from "@/lib/etiquetas";
 
 export const metadata = { title: "Flota · FleetNautic" };
@@ -19,7 +20,11 @@ export default async function FlotaPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {flota.map((e) => (
             <Link key={e.id} href={`/flota/${e.id}`}>
-              <Card className="h-full transition hover:border-brand">
+              <Card className="h-full overflow-hidden transition hover:border-brand">
+                {e.fotoRuta && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={urlFoto(e.fotoRuta)!} alt={e.nombre} loading="lazy" className="-mx-5 -mt-5 mb-3 aspect-[16/10] w-[calc(100%+2.5rem)] max-w-none object-cover" />
+                )}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="h-3 w-3 rounded-full" style={{ background: e.color }} />

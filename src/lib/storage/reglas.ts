@@ -42,3 +42,31 @@ export function tipoRealDe(b: Uint8Array): MimePermitido | null {
   if (b.length >= 5 && asc(0, "%PDF-")) return "application/pdf";
   return null;
 }
+
+// ─── Fotos de embarcaciones (bucket público: son material de promoción, no datos sensibles) ───
+export const BUCKET_FOTOS = "fotos-flota";
+export const MIMES_FOTO = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" } as const;
+export type MimeFoto = keyof typeof MIMES_FOTO;
+export const MAX_FOTO_BYTES = 5 * 1024 * 1024;
+
+export const esMimeFoto = (m: string): m is MimeFoto => m in MIMES_FOTO;
+
+export function validarFoto(a: { mime: string; tamano: number }): string | null {
+  if (!esMimeFoto(a.mime)) return "Solo se aceptan fotos JPG, PNG o WebP.";
+  if (!Number.isFinite(a.tamano) || a.tamano <= 0) return "El archivo está vacío.";
+  if (a.tamano > MAX_FOTO_BYTES) return `La foto pesa más de ${MAX_FOTO_BYTES / 1024 / 1024} MB.`;
+  return null;
+}
+
+export const nuevaRutaFoto = (tenantId: string, embarcacionId: string, mime: MimeFoto, id: string) => `${tenantId}/${embarcacionId}/${id}.${MIMES_FOTO[mime]}`;
+
+/** ¿La ruta es de esta embarcación y de esta empresa? Evita registrar archivos ajenos o rutas con `..`. */
+export function rutaFotoPerteneceA(ruta: string, tenantId: string, embarcacionId: string): boolean {
+  const partes = ruta.split("/");
+  if (partes.length !== 3 || partes.some((p) => p === "" || p === "." || p === "..")) return false;
+  const [t, e, archivo] = partes;
+  return t === tenantId && e === embarcacionId && /^[A-Za-z0-9-]+\.(jpg|png|webp)$/.test(archivo);
+}
+
+/** URL pública de una foto de embarcación (null si no tiene). */
+export const urlFoto = (ruta: string | null | undefined) => (ruta ? `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/${BUCKET_FOTOS}/${ruta}` : null);

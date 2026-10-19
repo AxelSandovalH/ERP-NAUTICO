@@ -1,4 +1,5 @@
 "use server";
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -6,6 +7,8 @@ import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { aDate, esIso, pesosACentavos } from "@/lib/fechas";
 import type { EstadoForm } from "@/components/formulario";
+import { esMimeFoto, nuevaRutaFoto, rutaFotoPerteneceA, validarFoto } from "@/lib/storage/reglas";
+import { almacenFotos } from "@/lib/storage/servidor";
 
 const embarcacionSchema = z.object({
   nombre: z.string().trim().min(2, "Escribe el nombre").max(80),
@@ -116,4 +119,59 @@ export async function eliminarBloqueo(embarcacionId: string, bloqueoId: string) 
   await withTenant(s.tenantId, (tx) => tx.bloqueoEmbarcacion.deleteMany({ where: { id: bloqueoId, embarcacionId } }));
   revalidatePath(`/flota/${embarcacionId}`);
   revalidatePath("/calendario");
+}
+
+// ─── foto de la embarcación ──────────────────────────────────────────────────
+
+/** Pide permiso para subir la foto: valida y devuelve una URL firmada de un solo uso (el archivo va directo a Storage). */
+export async function prepararFotoAccion(embarcacionId: string, a: { mime: string; tamano: number }): Promise<{ error: string } | { ruta: string; token: string }> {
+  const s = await requireModulo("flota", "flota:escribir");
+  const motivo = validarFoto(a);
+  if (motivo || !esMimeFoto(a.mime)) return { error: motivo ?? "Tipo de archivo no permitido." };
+  const existe = await withTenant(s.tenantId, (tx) => tx.embarcacion.findUnique({ where: { id: embarcacionId }, select: { id: true } }));
+  if (!existe) return { error: "Embarcación no encontrada." };
+  const ruta = nuevaRutaFoto(s.tenantId, embarcacionId, a.mime, randomUUID());
+  const { data, error } = await almacenFotos().createSignedUploadUrl(ruta);
+  if (error || !data) { console.error("[storage] no se pudo firmar la subida de foto:", error?.message); return { error: "No se pudo preparar la subida. Verifica que el almacenamiento esté configurado." }; }
+  return { ruta, token: data.token };
+}
+
+/** Guarda la foto una vez subida, revisando el tipo y tamaño REALES en Storage, y borra la anterior. */
+export async function confirmarFotoAccion(embarcacionId: string, ruta: string): Promise<{ error?: string; ok?: true }> {
+  const s = await requireModulo("flota", "flota:escribir");
+  if (!rutaFotoPerteneceA(ruta, s.tenantId, embarcacionId)) return { error: "Ruta de archivo inválida." };
+  const archivo = ruta.split("/")[2];
+  const { data, error } = await almacenFotos().list(`${s.tenantId}/${embarcacionId}`, { search: archivo, limit: 5 });
+  const obj = data?.find((o) => o.name === archivo);
+  if (error || !obj) return { error: "No se encontró la foto subida. Inténtalo de nuevo." };
+  const mime = String((obj.metadata as { mimetype?: string } | null)?.mimetype ?? "");
+  const tamano = Number((obj.metadata as { size?: number } | null)?.size ?? 0);
+  const motivo = validarFoto({ mime, tamano });
+  if (motivo) { await almacenFotos().remove([ruta]); return { error: motivo }; }
+  const anterior = await withTenant(s.tenantId, async (tx) => {
+    const e = await tx.embarcacion.findUnique({ where: { id: embarcacionId }, select: { fotoRuta: true } });
+    if (!e) return undefined;
+    await tx.embarcacion.update({ where: { id: embarcacionId }, data: { fotoRuta: ruta } });
+    return e.fotoRuta;
+  });
+  if (anterior === undefined) { await almacenFotos().remove([ruta]); return { error: "Embarcación no encontrada." }; }
+  if (anterior) await almacenFotos().remove([anterior]);
+  revalidatePath("/flota");
+  revalidatePath(`/flota/${embarcacionId}`);
+  return { ok: true };
+}
+
+export async function quitarFotoAccion(embarcacionId: string): Promise<{ error?: string; ok?: true }> {
+  const s = await requireModulo("flota", "flota:escribir");
+  const anterior = await withTenant(s.tenantId, async (tx) => {
+    const e = await tx.embarcacion.findUnique({ where: { id: embarcacionId }, select: { fotoRuta: true } });
+    if (!e) return undefined;
+    await tx.embarcacion.update({ where: { id: embarcacionId }, data: { fotoRuta: null } });
+    return e.fotoRuta;
+  });
+  if (anterior === undefined) return { error: "Embarcación no encontrada." };
+  if (anterior) await almacenFotos().remove([anterior]);
+  revalidatePath("/flota");
+  revalidatePath(`/flota/${embarcacionId}`);
+  return { ok: true };
 }

@@ -7,6 +7,8 @@ import { Card, Campo, Input, PageHeader, Tabla, Td, Th, Vacio } from "@/componen
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
 import { CamposEmbarcacion } from "@/components/form-embarcacion";
+import { FotoEmbarcacion } from "@/components/foto-embarcacion";
+import { urlFoto } from "@/lib/storage/reglas";
 import { actualizarEmbarcacion, crearBloqueo, crearTarifa, eliminarBloqueo, eliminarTarifa } from "../actions";
 
 export default async function EmbarcacionPage({ params }: { params: Promise<{ id: string }> }) {
@@ -24,7 +26,9 @@ export default async function EmbarcacionPage({ params }: { params: Promise<{ id
       <PageHeader titulo={e.nombre} sub="Datos, tarifas y bloqueos de disponibilidad" />
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-4 font-semibold">Datos</h2>
+          <h2 className="mb-4 font-semibold">Foto</h2>
+          <FotoEmbarcacion embarcacionId={e.id} url={urlFoto(e.fotoRuta)} puedeEditar={editar} />
+          <h2 className="mb-4 mt-6 font-semibold">Datos</h2>
           {editar ? (
             <Formulario accion={actualizarEmbarcacion.bind(null, e.id)}><CamposEmbarcacion v={e} conEstado /></Formulario>
           ) : <p className="text-sm text-muted">Solo lectura para tu rol.</p>}
