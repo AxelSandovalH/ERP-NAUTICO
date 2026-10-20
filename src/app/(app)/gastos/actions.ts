@@ -99,3 +99,15 @@ export async function alternarCategoriaAccion(id: string) {
   });
   revalidatePath("/gastos", "layout");
 }
+
+export async function colorCategoriaAccion(id: string, _: EstadoForm, fd: FormData): Promise<EstadoForm> {
+  const s = await requireModulo("gastos", "gastos:administrar");
+  const p = z.object({ color: z.string().regex(/^#[0-9a-fA-F]{6}$/, "Color inválido") }).safeParse(Object.fromEntries(fd));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const r = await withTenant(s.tenantId, (tx) => tx.categoria.updateMany({ where: { id }, data: { color: p.data.color } }));
+  if (r.count === 0) return { error: "Categoría no encontrada." };
+  revalidatePath("/gastos", "layout");
+  revalidatePath("/ingresos", "layout");
+  revalidatePath("/reportes");
+  return { ok: "Color guardado." };
+}

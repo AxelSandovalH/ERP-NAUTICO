@@ -88,10 +88,21 @@ export function ShellApp({ grupos, tenantNombre, usuarioNombre, usuarioFoto, pue
           ))}
         </nav>
       </aside>
-      <div className="flex justify-end px-4 pt-3 md:px-8">
-        <MenuCuenta nombre={usuarioNombre} foto={usuarioFoto} empresa={tenantNombre} configuracion={puedeConfigurar} salir={salir} />
-      </div>
-      <main className={compacto ? "w-full min-w-0 px-2 py-2 md:px-3 md:py-3" : `mx-auto w-full min-w-0 px-4 py-6 md:px-8 ${ancho ? "max-w-none" : "max-w-6xl"}`}>{seccion && seccion.tabs.length > 1 && <PestanasSeccion tabs={seccion.tabs} pathname={pathname} />}{children}</main>
+      {compacto ? (
+        // Calendario: pestañas y cuenta comparten una sola fila delgada para dejar toda la altura al mes
+        <div className="flex items-center justify-between gap-3 px-2 pt-1.5 md:px-3">
+          {seccion && seccion.tabs.length > 1 ? <PestanasSeccion tabs={seccion.tabs} pathname={pathname} compacta /> : <span />}
+          <MenuCuenta pequeno nombre={usuarioNombre} foto={usuarioFoto} empresa={tenantNombre} configuracion={puedeConfigurar} salir={salir} />
+        </div>
+      ) : (
+        <div className="flex justify-end px-4 pt-3 md:px-8">
+          <MenuCuenta nombre={usuarioNombre} foto={usuarioFoto} empresa={tenantNombre} configuracion={puedeConfigurar} salir={salir} />
+        </div>
+      )}
+      <main className={compacto ? "w-full min-w-0 px-2 py-1 md:px-3" : `mx-auto w-full min-w-0 px-4 py-6 md:px-8 ${ancho ? "max-w-none" : "max-w-6xl"}`}>
+        {!compacto && seccion && seccion.tabs.length > 1 && <PestanasSeccion tabs={seccion.tabs} pathname={pathname} />}
+        {children}
+      </main>
     </div>
   );
 }

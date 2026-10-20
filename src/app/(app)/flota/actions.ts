@@ -159,3 +159,26 @@ export async function quitarFotoAccion(embarcacionId: string): Promise<{ error?:
   revalidatePath(`/flota/${embarcacionId}`);
   return { ok: true };
 }
+
+// ─── precio casa (desde la página de Tarifas) ────────────────────────────────
+
+const casaSchema = z.object({
+  precioCasa: z.string().optional(),
+  paxIncluidosCasa: z.preprocess((v) => (v === "" ? undefined : v), z.coerce.number().int().min(1).max(500).optional()),
+  extraPaxCasa: z.string().optional(),
+});
+
+/** Precio casa: lo mínimo que la empresa debe recibir por un tour, base de las comisiones sobre balance. */
+export async function guardarPrecioCasaAccion(embarcacionId: string, _: EstadoForm, fd: FormData): Promise<EstadoForm> {
+  const s = await requireModulo("flota", "flota:escribir");
+  const p = casaSchema.safeParse(Object.fromEntries(fd));
+  if (!p.success) return { error: p.error.issues[0].message };
+  const aCentavos = (t?: string) => (t && t.trim() ? pesosACentavos(t) : null);
+  const precio = aCentavos(p.data.precioCasa), extra = aCentavos(p.data.extraPaxCasa);
+  if ((p.data.precioCasa?.trim() && precio === null) || (p.data.extraPaxCasa?.trim() && extra === null)) return { error: "Monto inválido." };
+  const r = await withTenant(s.tenantId, (tx) => tx.embarcacion.updateMany({ where: { id: embarcacionId }, data: { precioCasaCentavos: precio, paxIncluidosCasa: p.data.paxIncluidosCasa ?? null, extraPaxCasaCentavos: extra } }));
+  if (r.count === 0) return { error: "Embarcación no encontrada." };
+  revalidatePath("/tarifas");
+  revalidatePath(`/flota/${embarcacionId}`);
+  return { ok: "Precio casa guardado." };
+}

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 import type { Prisma } from "@prisma/client";
+import { colorDeCategoria } from "@/lib/finanzas/colores";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
@@ -87,7 +88,7 @@ export default async function IngresosPage({ searchParams }: { searchParams: Pro
                   <Td className="whitespace-nowrap">{aIso(i.fecha)}</Td>
                   <Td>
                     <span className={cancelado ? "line-through" : "font-medium"}>{i.concepto}</span> {i.origen !== "MANUAL" && <Insignia>{ORIGENES_MOVIMIENTO[i.origen]}</Insignia>}
-                    <span className="block text-xs text-muted">{[i.categoria?.nombre, i.reserva ? `reserva #${i.reserva.folio}` : null].filter(Boolean).join(" · ")}{cancelado && ` · cancelado: ${i.motivoCancelacion}`}</span>
+                    <span className="flex items-center gap-1.5 text-xs text-muted">{i.categoria && <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colorDeCategoria(i.categoria.nombre, i.categoria.color) }} />}<span>{[i.categoria?.nombre, i.reserva ? `reserva #${i.reserva.folio}` : null].filter(Boolean).join(" · ")}{cancelado && ` · cancelado: ${i.motivoCancelacion}`}</span></span>
                     {i.reserva && <Link href={`/reservas/${i.reserva.id}`} className="text-xs text-brand">ver reserva</Link>}
                   </Td>
                   <Td className="text-xs">{i.cuenta.nombre}</Td>

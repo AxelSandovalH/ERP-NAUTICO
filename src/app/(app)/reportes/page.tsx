@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GRIS, colorDeCategoria } from "@/lib/finanzas/colores";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { dinero, hoyIso } from "@/lib/fechas";
@@ -21,6 +22,8 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
   const finanzas = s.modulos.includes("gastos") || s.modulos.includes("ingresos"), reservas = s.modulos.includes("reservas");
   const r = await withTenant(s.tenantId, (tx) => reporteDe(tx, periodo, { finanzas, reservas }), { timeoutMs: 60_000 });
   const m = s.moneda, f = r.finanzas, v = r.ventas;
+  const coloresCat = f ? new Map((await withTenant(s.tenantId, (tx) => tx.categoria.findMany({ select: { nombre: true, color: true } }))).map((c) => [c.nombre, c.color])) : new Map<string, string | null>();
+  const conColor = (l: { etiqueta: string; centavos: number }[]) => l.map((p) => ({ etiqueta: p.etiqueta, centavos: p.centavos, color: p.etiqueta === "Otras" ? GRIS : colorDeCategoria(p.etiqueta, coloresCat.get(p.etiqueta)) }));
 
   return (
     <>
@@ -61,8 +64,8 @@ export default async function ReportesPage({ searchParams }: { searchParams: Pro
           )}
 
           <div className="grid gap-6 lg:grid-cols-2">
-            {f && <Card><h2 className="mb-3 font-semibold">Gastos por categoría</h2><BarrasHorizontales items={f.gastosPorCategoria.map((p) => ({ etiqueta: p.etiqueta, centavos: p.centavos }))} moneda={m} variable="--serie-2" /></Card>}
-            {f && <Card><h2 className="mb-3 font-semibold">Ingresos por categoría</h2><BarrasHorizontales items={f.ingresosPorCategoria.map((p) => ({ etiqueta: p.etiqueta, centavos: p.centavos }))} moneda={m} /></Card>}
+            {f && <Card><h2 className="mb-3 font-semibold">Gastos por categoría</h2><BarrasHorizontales items={conColor(f.gastosPorCategoria)} moneda={m} /></Card>}
+            {f && <Card><h2 className="mb-3 font-semibold">Ingresos por categoría</h2><BarrasHorizontales items={conColor(f.ingresosPorCategoria)} moneda={m} /></Card>}
             {v && <Card><h2 className="mb-3 font-semibold">Ventas por canal</h2><BarrasHorizontales items={v.porOrigen.map((p) => ({ etiqueta: p.etiqueta, centavos: p.centavos }))} moneda={m} /></Card>}
           </div>
 

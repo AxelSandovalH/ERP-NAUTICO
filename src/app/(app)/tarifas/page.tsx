@@ -7,7 +7,7 @@ import { TIPOS_EMBARCACION } from "@/lib/etiquetas";
 import { Card, Campo, Input, PageHeader, Tabla, Td, Th, Vacio } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
-import { crearTarifa, eliminarTarifa } from "../flota/actions";
+import { crearTarifa, eliminarTarifa, guardarPrecioCasaAccion } from "../flota/actions";
 
 export const metadata = { title: "Tarifas · FleetNautic" };
 
@@ -33,17 +33,33 @@ export default async function TarifasPage() {
               </div>
               {e.tarifas.length === 0 ? <Vacio>Sin tarifas.</Vacio> : (
                 <Tabla>
-                  <thead><tr><Th>Nombre</Th><Th>Duración</Th><Th>Precio</Th><Th /></tr></thead>
+                  <thead><tr><Th>Nombre</Th><Th>Duración</Th><Th>Precio</Th><Th>Sobre precio casa</Th><Th /></tr></thead>
                   <tbody>
                     {e.tarifas.map((t) => (
                       <tr key={t.id}>
                         <Td>{t.nombre}</Td><Td>{t.duracionMin / 60} h</Td><Td>{dinero(t.precioCentavos, s.moneda)}</Td>
+                        <Td className="text-xs">{e.precioCasaCentavos == null ? <span className="text-muted">—</span> : (
+                          <span className={t.precioCentavos >= e.precioCasaCentavos ? "text-emerald-700 dark:text-emerald-300" : "font-medium text-red-600"}>
+                            {t.precioCentavos >= e.precioCasaCentavos ? "+" : "−"}{dinero(Math.abs(t.precioCentavos - e.precioCasaCentavos), s.moneda)}
+                          </span>)}</Td>
                         <Td>{editar && <BotonAccion accion={eliminarTarifa.bind(null, e.id, t.id)} etiqueta="Quitar" variante="peligro" confirmar="¿Quitar esta tarifa?" />}</Td>
                       </tr>
                     ))}
                   </tbody>
                 </Tabla>
               )}
+              <div className="mt-4 rounded-lg border border-line bg-background p-3">
+                <p className="mb-2 text-sm font-medium">Precio casa <span className="font-normal text-muted">· lo mínimo que debes recibir por un tour; base de las comisiones sobre balance</span></p>
+                {editar ? (
+                  <Formulario accion={guardarPrecioCasaAccion.bind(null, e.id)} enviar="Guardar precio casa" className="grid gap-3 sm:grid-cols-3">
+                    <Campo etiqueta={`Precio casa (${s.moneda})`}><Input name="precioCasa" inputMode="decimal" defaultValue={e.precioCasaCentavos != null ? String(e.precioCasaCentavos / 100) : ""} placeholder="Sin configurar" /></Campo>
+                    <Campo etiqueta="Pax incluidos"><Input name="paxIncluidosCasa" type="number" min={1} defaultValue={e.paxIncluidosCasa ?? ""} /></Campo>
+                    <Campo etiqueta={`Extra por pax (${s.moneda})`}><Input name="extraPaxCasa" inputMode="decimal" defaultValue={e.extraPaxCasaCentavos != null ? String(e.extraPaxCasaCentavos / 100) : ""} /></Campo>
+                  </Formulario>
+                ) : (
+                  <p className="text-sm text-muted">{e.precioCasaCentavos != null ? dinero(e.precioCasaCentavos, s.moneda) : "Sin configurar"}</p>
+                )}
+              </div>
               {editar && (
                 <Formulario accion={crearTarifa.bind(null, e.id)} enviar="Agregar tarifa" className="mt-4 grid gap-3 sm:grid-cols-3">
                   <Campo etiqueta="Nombre"><Input name="nombre" placeholder="Tour 4 horas" required /></Campo>

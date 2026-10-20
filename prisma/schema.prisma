@@ -783,6 +783,8 @@ model Categoria {
   clave    String?
   activa   Boolean       @default(true)
   orden    Int           @default(0)
+  // Color en listas y gráficas (#rrggbb); null = el de la categoría base o uno automático
+  color    String?
 
   gastos   Gasto[]
   ingresos Ingreso[]

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Prisma } from "@prisma/client";
+import { colorDeCategoria } from "@/lib/finanzas/colores";
 import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
@@ -32,7 +33,8 @@ export default async function GastosPage({ searchParams }: { searchParams: Promi
   });
   const total = d.gastos.filter((g) => g.estado === "ACTIVO").reduce((a, g) => a + g.montoBaseCentavos, 0);
   const nombreCat = (id: string | null) => d.cats.find((c) => c.id === id)?.nombre ?? "Sin categoría";
-  const desglose = d.porCat.map((x) => ({ nombre: nombreCat(x.categoriaId), monto: x._sum.montoBaseCentavos ?? 0 })).sort((a, b) => b.monto - a.monto);
+  const colorCat = (id: string | null) => colorDeCategoria(nombreCat(id), d.cats.find((c) => c.id === id)?.color);
+  const desglose = d.porCat.map((x) => ({ nombre: nombreCat(x.categoriaId), color: colorCat(x.categoriaId), monto: x._sum.montoBaseCentavos ?? 0 })).sort((a, b) => b.monto - a.monto);
   const qs = (m: string) => { const p = new URLSearchParams({ ...(sp.cat ? { cat: sp.cat } : {}), ...(sp.cuenta ? { cuenta: sp.cuenta } : {}), ...(sp.emb ? { emb: sp.emb } : {}), mes: m }); return `/gastos?${p}`; };
 
   return (
@@ -65,8 +67,8 @@ export default async function GastosPage({ searchParams }: { searchParams: Promi
             <ul className="space-y-1.5">
               {desglose.slice(0, 6).map((x) => (
                 <li key={x.nombre} className="flex items-center gap-3 text-sm">
-                  <span className="w-44 shrink-0 truncate">{x.nombre}</span>
-                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-brand-soft"><span className="block h-full rounded-full bg-brand" style={{ width: `${Math.max(2, (x.monto / (desglose[0].monto || 1)) * 100)}%` }} /></span>
+                  <span className="flex w-44 shrink-0 items-center gap-2 truncate"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: x.color }} />{x.nombre}</span>
+                  <span className="h-2 flex-1 overflow-hidden rounded-full bg-line/50"><span className="block h-full rounded-full" style={{ width: `${Math.max(2, (x.monto / (desglose[0].monto || 1)) * 100)}%`, background: x.color }} /></span>
                   <span className="w-28 shrink-0 text-right tabular-nums">{dinero(x.monto, s.moneda)}</span>
                 </li>
               ))}
@@ -86,7 +88,7 @@ export default async function GastosPage({ searchParams }: { searchParams: Promi
                   <Link href={`/gastos/${g.id}`} className={`font-medium text-brand ${g.estado === "CANCELADO" ? "line-through" : ""}`}>{g.concepto}</Link>
                   <span className="block text-xs text-muted">{[g.proveedor, g.embarcacion?.nombre].filter(Boolean).join(" · ")}{g._count.comprobantes > 0 && ` · 📎 ${g._count.comprobantes}`}{g.requiereFactura && " · pedir factura"}</span>
                 </Td>
-                <Td className="text-xs">{g.categoria?.nombre ?? "—"}{g.origen !== "MANUAL" && <> <Insignia>{ORIGENES_MOVIMIENTO[g.origen]}</Insignia></>}</Td>
+                <Td className="text-xs"><span className="inline-flex items-center gap-1.5"><span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: colorDeCategoria(g.categoria?.nombre, g.categoria?.color) }} />{g.categoria?.nombre ?? "—"}</span>{g.origen !== "MANUAL" && <> <Insignia>{ORIGENES_MOVIMIENTO[g.origen]}</Insignia></>}</Td>
                 <Td className="text-xs">{g.cuenta.nombre}</Td>
                 <Td className="whitespace-nowrap font-medium">{dinero(g.montoCentavos, g.moneda)}</Td>
                 <Td className="whitespace-nowrap text-xs text-muted">{g.moneda !== s.moneda ? dinero(g.montoBaseCentavos, s.moneda) : ""}</Td>

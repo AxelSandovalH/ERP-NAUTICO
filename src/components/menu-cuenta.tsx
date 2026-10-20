@@ -11,7 +11,7 @@ import { prepararArchivo } from "@/lib/storage/cliente";
 const iniciales = (n: string) => n.trim().split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? "").join("") || "?";
 
 /** Ícono de la cuenta, en la esquina superior derecha: abre un menú con la configuración y el cierre de sesión. */
-export function MenuCuenta({ nombre, foto, empresa, configuracion, salir }: { nombre: string; foto: string | null; empresa: string; configuracion: boolean; salir: () => Promise<void> }) {
+export function MenuCuenta({ nombre, foto, empresa, configuracion, salir, pequeno }: { nombre: string; foto: string | null; empresa: string; configuracion: boolean; salir: () => Promise<void>; pequeno?: boolean }) {
   const router = useRouter();
   const [abierto, setAbierto] = useState(false);
   const raiz = useRef<HTMLDivElement>(null);
@@ -56,14 +56,14 @@ export function MenuCuenta({ nombre, foto, empresa, configuracion, salir }: { no
   return (
     <div ref={raiz} className="relative">
       <button type="button" onClick={() => setAbierto((a) => !a)} aria-haspopup="menu" aria-expanded={abierto} aria-label={`Cuenta de ${nombre}`} title={nombre}
-        className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-full bg-navy text-sm font-semibold text-pato outline-none ring-offset-2 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand">
+        className={`flex ${pequeno ? "h-8 w-8" : "h-10 w-10"} items-center justify-center overflow-hidden rounded-full bg-navy text-sm font-semibold text-pato outline-none ring-offset-2 hover:opacity-90 focus-visible:ring-2 focus-visible:ring-brand`}>
         {foto
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={foto} alt="" className="h-full w-full rounded-full object-cover" />
           : iniciales(nombre)}
       </button>
       {abierto && (
-        <div role="menu" className="absolute right-0 top-12 z-50 w-64 rounded-xl border border-line bg-surface p-2 shadow-xl">
+        <div role="menu" className={`absolute right-0 ${pequeno ? "top-10" : "top-12"} z-50 w-64 rounded-xl border border-line bg-surface p-2 shadow-xl`}>
           <div className="border-b border-line px-3 pb-2 pt-1">
             <p className="truncate text-sm font-semibold">{nombre}</p>
             <p className="truncate text-xs text-muted">{empresa}</p>

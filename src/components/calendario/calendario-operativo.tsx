@@ -306,7 +306,7 @@ export function CalendarioOperativo({ eventosIniciales, ventana, flota, puedeCre
           expandRows
           stickyHeaderDates
           fixedWeekCount={false}
-          dayMaxEvents={movil ? 3 : 4}
+          dayMaxEvents={movil ? 3 : true}
           slotEventOverlap={false}
           eventMaxStack={vista === "timeGridDay" ? 99 : 3}
           eventMinHeight={movil ? 64 : 52}

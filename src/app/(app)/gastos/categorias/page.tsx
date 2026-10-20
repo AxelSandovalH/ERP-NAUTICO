@@ -5,7 +5,8 @@ import { asegurarCategoriasBase } from "@/lib/finanzas/servicio";
 import { Campo, Card, Input, Insignia, PageHeader, Select } from "@/components/ui";
 import { Formulario } from "@/components/formulario";
 import { BotonAccion } from "@/components/boton-accion";
-import { alternarCategoriaAccion, crearCategoriaAccion } from "../actions";
+import { alternarCategoriaAccion, colorCategoriaAccion, crearCategoriaAccion } from "../actions";
+import { colorDeCategoria } from "@/lib/finanzas/colores";
 
 export const metadata = { title: "Categorías · FleetNautic" };
 
@@ -25,7 +26,13 @@ export default async function CategoriasPage() {
               <ul className="divide-y divide-line text-sm">
                 {grupo(tipo).map((c) => (
                   <li key={c.id} className="flex items-center justify-between gap-2 py-2">
-                    <span className={c.activa ? "" : "text-muted line-through"}>{c.nombre} {c.clave && <Insignia tono="azul">sistema</Insignia>}</span>
+                    <span className={`flex items-center gap-2 ${c.activa ? "" : "text-muted line-through"}`}>
+                      <span className="h-3 w-3 shrink-0 rounded-full" style={{ background: colorDeCategoria(c.nombre, c.color) }} />
+                      {c.nombre} {c.clave && <Insignia tono="azul">sistema</Insignia>}
+                    </span>
+                    <Formulario accion={colorCategoriaAccion.bind(null, c.id)} enviar="Color" className="ml-auto flex items-center gap-1.5">
+                      <input type="color" name="color" defaultValue={colorDeCategoria(c.nombre, c.color)} aria-label={`Color de ${c.nombre}`} className="h-7 w-9 cursor-pointer rounded border border-line bg-transparent p-0.5" />
+                    </Formulario>
                     {!c.clave && <BotonAccion etiqueta={c.activa ? "Ocultar" : "Mostrar"} accion={alternarCategoriaAccion.bind(null, c.id)} />}
                   </li>
                 ))}
