@@ -13,17 +13,18 @@ export default async function FlotaPage() {
   const flota = await withTenant(s.tenantId, (tx) =>
     tx.embarcacion.findMany({ orderBy: { nombre: "asc" }, include: { _count: { select: { tarifas: true } } } }));
   return (
-    <>
+    // En pantallas grandes la cuadrícula ocupa exactamente el alto disponible: las fotos se ajustan para que todo quepa sin scroll
+    <div className="flex flex-col md:h-[calc(100dvh-3.75rem)]">
       <PageHeader titulo="Flota" sub={`${flota.length} embarcaciones`}
         acciones={puede(s.rol, "flota:escribir") && <BotonLink href="/flota/nueva">Nueva embarcación</BotonLink>} />
       {flota.length === 0 ? <Vacio>Aún no registras embarcaciones.</Vacio> : (
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+        <div className="grid min-h-0 grid-cols-1 gap-4 md:flex-1 md:grid-cols-2 md:grid-rows-2">
           {flota.map((e) => (
-            <Link key={e.id} href={`/flota/${e.id}`}>
-              <Card className="h-full overflow-hidden transition hover:border-brand">
+            <Link key={e.id} href={`/flota/${e.id}`} className="block min-h-0">
+              <Card className="flex h-full min-h-0 flex-col overflow-hidden transition hover:border-brand">
                 {e.fotoRuta && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={urlFoto(e.fotoRuta)!} alt={e.nombre} loading="lazy" className="-mx-5 -mt-5 mb-3 aspect-[2/1] w-[calc(100%+2.5rem)] max-w-none object-cover" />
+                  <img src={urlFoto(e.fotoRuta)!} alt={e.nombre} loading="lazy" className="-mx-5 -mt-5 mb-3 aspect-[2/1] w-[calc(100%+2.5rem)] max-w-none object-cover md:aspect-auto md:h-0 md:min-h-0 md:flex-1" />
                 )}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
@@ -43,6 +44,6 @@ export default async function FlotaPage() {
           ))}
         </div>
       )}
-    </>
+    </div>
   );
 }
