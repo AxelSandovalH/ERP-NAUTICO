@@ -219,6 +219,15 @@ describe("navegación por rol", () => {
     expect(sec("calendario").tabs.map((t) => t.href)).toEqual(["/calendario", "/reservas", "/clientes"]);
     expect(sec("transporte").tabs.map((t) => t.etiqueta)).toContain("Flota terrestre");
   });
+  it("Reportes tiene cuatro reportes y siempre se llama Reportes", () => {
+    const sec = (rol: "ADMIN" | "VENDEDOR") => seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), rol).flat().find((s) => s.id === "reportes");
+    expect(sec("ADMIN")?.tabs.map((t) => t.etiqueta)).toEqual(["Embarcaciones", "Gastos", "Ingresos", "Flota terrestre"]);
+    expect(sec("VENDEDOR")).toBeUndefined();
+    // Sin gastos ni ingresos activos, la sección sigue llamándose Reportes y arranca en el primer reporte disponible
+    const solo = seccionesDe(["nucleo", "reportes", "transporte"], "ADMIN").flat().find((s) => s.id === "reportes");
+    expect(solo?.etiqueta).toBe("Reportes");
+    expect(solo?.href).toBe("/reportes/flota-terrestre");
+  });
   it("si no ve la entrada principal, la sección toma el nombre de la primera que sí ve", () => {
     const nomina = seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), "VENDEDOR").flat().find((s) => s.id === "nomina");
     expect(nomina?.etiqueta).toBe("Asistencia");

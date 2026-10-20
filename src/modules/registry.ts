@@ -256,8 +256,9 @@ export function modulosActivos(guardados: string[]): ModuloId[] {
 // ─── barra de navegación ─────────────────────────────────────────────────────
 
 /** Una página dentro de una sección de la barra. La primera entrada es la principal; las demás se muestran como pestañas. */
-export type Entrada = { href: string; etiqueta: string; modulo: ModuloId; permiso?: Permiso };
-export type SeccionDef = { id: string; etiqueta: string; entradas: Entrada[] };
+export type Entrada = { href: string; etiqueta: string; modulo: ModuloId; permiso?: Permiso; /** Otro módulo que también debe estar activo (p. ej. los reportes de gastos necesitan Reportes y Gastos) */ ademas?: ModuloId };
+/** `etiquetaFija`: la sección siempre se llama igual (no toma el nombre de su primera entrada visible). */
+export type SeccionDef = { id: string; etiqueta: string; entradas: Entrada[]; etiquetaFija?: boolean };
 
 /** Orden de la barra lateral, en tres grupos separados. Lo que no es un módulo propio vive como pestaña dentro de otra sección:
  *  Reservas y Clientes en Calendario; Equipo, Asistencia y Horarios en Nómina; Cuentas en Conciliación; Inventario en Flota. */
@@ -297,14 +298,19 @@ export const GRUPOS_NAV: SeccionDef[][] = [
   [
     { id: "comisiones", etiqueta: "Comisiones", entradas: [{ href: "/comisiones", etiqueta: "Comisiones", modulo: "comisiones", permiso: "comisiones:ver_propias" }] },
     { id: "tarifas", etiqueta: "Tarifas", entradas: [{ href: "/tarifas", etiqueta: "Tarifas", modulo: "flota" }] },
-    { id: "reportes", etiqueta: "Reportes", entradas: [{ href: "/reportes", etiqueta: "Reportes", modulo: "reportes", permiso: "reportes:ver" }] },
+    { id: "reportes", etiqueta: "Reportes", etiquetaFija: true, entradas: [
+      { href: "/reportes/embarcaciones", etiqueta: "Embarcaciones", modulo: "reservas", ademas: "reportes", permiso: "reportes:ver" },
+      { href: "/reportes/gastos", etiqueta: "Gastos", modulo: "gastos", ademas: "reportes", permiso: "reportes:ver" },
+      { href: "/reportes/ingresos", etiqueta: "Ingresos", modulo: "ingresos", ademas: "reportes", permiso: "reportes:ver" },
+      { href: "/reportes/flota-terrestre", etiqueta: "Flota terrestre", modulo: "transporte", ademas: "reportes", permiso: "reportes:ver" },
+    ] },
     { id: "dashboard", etiqueta: "Dashboard", entradas: [{ href: "/dashboard", etiqueta: "Dashboard", modulo: "nucleo" }] },
   ],
 ];
 
 export type SeccionNav = { id: string; etiqueta: string; href: string; rutas: string[]; tabs: { href: string; etiqueta: string }[] };
 
-const visible = (e: Entrada, activos: ModuloId[], rol?: RolUsuario) => activos.includes(e.modulo) && (!e.permiso || (!!rol && puede(rol, e.permiso)));
+const visible = (e: Entrada, activos: ModuloId[], rol?: RolUsuario) => activos.includes(e.modulo) && (!e.ademas || activos.includes(e.ademas)) && (!e.permiso || (!!rol && puede(rol, e.permiso)));
 
 /** Barra lateral para esta empresa y este rol: grupos de secciones, ya sin lo que el plan, los módulos o el rol no permiten.
  *  Si la entrada principal no es visible, la sección toma el nombre y el destino de la primera que sí lo sea. */
@@ -314,7 +320,7 @@ export function seccionesDe(activos: ModuloId[], rol?: RolUsuario): SeccionNav[]
     if (vis.length === 0) return [];
     return [{
       id: sec.id,
-      etiqueta: vis[0] === sec.entradas[0] ? sec.etiqueta : vis[0].etiqueta,
+      etiqueta: sec.etiquetaFija || vis[0] === sec.entradas[0] ? sec.etiqueta : vis[0].etiqueta,
       href: vis[0].href,
       rutas: sec.entradas.map((e) => e.href),
       tabs: vis.map((e) => ({ href: e.href, etiqueta: e.etiqueta })),
