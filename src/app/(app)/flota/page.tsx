@@ -3,6 +3,7 @@ import { requireModulo } from "@/lib/auth/session";
 import { withTenant } from "@/lib/db/tenant";
 import { puede } from "@/modules/permisos";
 import { BotonLink, Card, Insignia, PageHeader, Vacio } from "@/components/ui";
+import { FotoAjustada } from "@/components/foto-ajustada";
 import { urlFoto } from "@/lib/storage/reglas";
 import { ESTADOS_EMBARCACION, TIPOS_EMBARCACION } from "@/lib/etiquetas";
 
@@ -23,8 +24,7 @@ export default async function FlotaPage() {
             <Link key={e.id} href={`/flota/${e.id}`} className="block min-h-0">
               <Card className="flex h-full min-h-0 flex-col overflow-hidden transition hover:border-brand">
                 {e.fotoRuta && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={urlFoto(e.fotoRuta)!} alt={e.nombre} loading="lazy" className="-mx-5 -mt-5 mb-3 aspect-[2/1] w-[calc(100%+2.5rem)] max-w-none object-cover md:aspect-auto md:h-0 md:min-h-0 md:flex-1" />
+                  <FotoAjustada src={urlFoto(e.fotoRuta)!} alt={e.nombre} className="-mx-5 -mt-5 mb-3 aspect-[2/1] w-[calc(100%+2.5rem)] md:aspect-auto md:h-0 md:min-h-0 md:flex-1" />
                 )}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">

@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import { Camera, ImageIcon, Trash2 } from "lucide-react";
 import { BUCKET_FOTOS, esMimeFoto, validarFoto } from "@/lib/storage/reglas";
 import { prepararArchivo } from "@/lib/storage/cliente";
+import { FotoAjustada } from "./foto-ajustada";
 
 type Acciones = {
   preparar: (id: string, a: { mime: string; tamano: number }) => Promise<{ error: string } | { ruta: string; token: string }>;
@@ -46,12 +47,9 @@ export function FotoEmbarcacion({ embarcacionId, url, puedeEditar, acciones, com
 
   return (
     <div>
-      <div className={`relative aspect-[16/10] overflow-hidden rounded-lg border border-line bg-surface ${compacta ? "max-w-xs" : ""}`}>
-        {url
-          // eslint-disable-next-line @next/next/no-img-element
-          ? <img src={url} alt="Foto de la embarcación" className="h-full w-full object-cover" />
-          : <div className="flex h-full flex-col items-center justify-center gap-2 text-muted"><ImageIcon className="h-8 w-8" /><span className="text-sm">Sin foto</span></div>}
-      </div>
+      {url
+        ? <FotoAjustada src={url} alt="Foto de la embarcación" className={`aspect-[16/10] rounded-lg border border-line ${compacta ? "max-w-xs" : ""}`} />
+        : <div className={`flex aspect-[16/10] flex-col items-center justify-center gap-2 rounded-lg border border-line bg-surface text-muted ${compacta ? "max-w-xs" : ""}`}><ImageIcon className="h-8 w-8" /><span className="text-sm">Sin foto</span></div>}
       {puedeEditar && (
         <div className="mt-3 flex flex-wrap items-center gap-3">
           <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => subir(e.target.files)} />
