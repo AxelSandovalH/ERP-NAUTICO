@@ -10,6 +10,9 @@ import { periodoDe } from "@/lib/reportes/rangos";
 import { reporteDe } from "@/lib/reportes/servicio";
 import { variacion } from "@/lib/reportes/agregar";
 import { Tile } from "@/components/graficas/tile";
+import { GraficaMensual } from "@/components/graficas/grafica-mensual";
+import { BarrasHorizontales } from "@/components/graficas/barras-horizontales";
+import { GRIS, colorDeCategoria } from "@/lib/finanzas/colores";
 import { contarPorReabastecer } from "@/lib/inventario/servicio";
 
 export const metadata = { title: "Dashboard · FleetNautic" };
@@ -41,6 +44,17 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   // Resumen financiero del mes (solo con el módulo de reportes); se calcula aparte para no encarecer a quien no lo tiene
   const verReportes = s.modulos.includes("reportes") && (s.modulos.includes("gastos") || s.modulos.includes("ingresos"));
   const fin = verReportes ? (await withTenant(s.tenantId, (tx) => reporteDe(tx, periodoDe("este_mes", hoy), { finanzas: true, reservas: false }))).finanzas : null;
+  // Gráficas de los últimos 6 meses (requieren el módulo de reportes)
+  const verFinanzas = s.modulos.includes("gastos") || s.modulos.includes("ingresos");
+  const graficas = s.modulos.includes("reportes") && (verFinanzas || tieneReservas)
+    ? await withTenant(s.tenantId, async (tx) => {
+        const periodo = periodoDe("seis_meses", hoy);
+        const rep = await reporteDe(tx, periodo, { finanzas: verFinanzas, reservas: tieneReservas });
+        const cats = await tx.categoria.findMany({ select: { nombre: true, color: true } });
+        const flota = await tx.embarcacion.findMany({ select: { id: true, color: true } });
+        return { rep, periodo, colorCat: new Map(cats.map((c) => [c.nombre, c.color])), colorEmb: new Map(flota.map((e) => [e.id, e.color])) };
+      }, { timeoutMs: 60_000 })
+    : null;
   const verInventario = s.modulos.includes("inventario") && puede(s.rol, "inventario:ver");
   const porReabastecer = verInventario ? await withTenant(s.tenantId, (tx) => contarPorReabastecer(tx)) : 0;
   return (
@@ -61,6 +75,37 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
               <Tile etiqueta="Ingresos del mes" valor={dinero(fin.totalIngresos, s.moneda)} variacion={variacion(fin.totalIngresos, fin.previos.ingresos)} />
               <Tile etiqueta="Gastos del mes" valor={dinero(fin.totalGastos, s.moneda)} variacion={variacion(fin.totalGastos, fin.previos.gastos)} subeEsBueno={false} />
               <Tile etiqueta="Utilidad del mes" valor={dinero(fin.utilidad, s.moneda)} nota="Ver detalle en Reportes" />
+            </div>
+          )}
+          {graficas && (
+            <div className="mb-6 grid gap-6 lg:grid-cols-2">
+              {graficas.rep.finanzas && (
+                <Card>
+                  <h2 className="mb-3 font-semibold">Ingresos y gastos por mes</h2>
+                  <GraficaMensual titulo="Ingresos y gastos por mes" meses={graficas.periodo.meses} moneda={s.moneda} series={[
+                    { nombre: "Ingresos", valores: graficas.rep.finanzas.ingresos, variable: "--serie-1" },
+                    { nombre: "Gastos", valores: graficas.rep.finanzas.gastos, variable: "--serie-2" },
+                  ]} />
+                </Card>
+              )}
+              {graficas.rep.ventas && (
+                <Card>
+                  <h2 className="mb-3 font-semibold">Ventas por mes</h2>
+                  <GraficaMensual titulo="Ventas por mes" meses={graficas.periodo.meses} moneda={s.moneda} series={[{ nombre: "Ventas", valores: graficas.rep.ventas.porMes, variable: "--serie-1" }]} />
+                </Card>
+              )}
+              {graficas.rep.finanzas && (
+                <Card>
+                  <h2 className="mb-3 font-semibold">Gastos por categoría</h2>
+                  <BarrasHorizontales moneda={s.moneda} items={graficas.rep.finanzas.gastosPorCategoria.map((p) => ({ etiqueta: p.etiqueta, centavos: p.centavos, color: p.etiqueta === "Otras" ? GRIS : colorDeCategoria(p.etiqueta, graficas.colorCat.get(p.etiqueta)) }))} />
+                </Card>
+              )}
+              {graficas.rep.ventas && graficas.rep.ventas.porEmbarcacion.length > 0 && (
+                <Card>
+                  <h2 className="mb-3 font-semibold">Ventas por embarcación</h2>
+                  <BarrasHorizontales moneda={s.moneda} items={graficas.rep.ventas.porEmbarcacion.map((e) => ({ etiqueta: e.nombre, centavos: e.ventas, color: graficas.colorEmb.get(e.id) }))} />
+                </Card>
+              )}
             </div>
           )}
           <Card>

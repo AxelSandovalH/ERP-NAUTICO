@@ -17,13 +17,13 @@ export default async function FlotaPage() {
       <PageHeader titulo="Flota" sub={`${flota.length} embarcaciones`}
         acciones={puede(s.rol, "flota:escribir") && <BotonLink href="/flota/nueva">Nueva embarcación</BotonLink>} />
       {flota.length === 0 ? <Vacio>Aún no registras embarcaciones.</Vacio> : (
-        <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,22rem),1fr))] gap-5">
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           {flota.map((e) => (
             <Link key={e.id} href={`/flota/${e.id}`}>
               <Card className="h-full overflow-hidden transition hover:border-brand">
                 {e.fotoRuta && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={urlFoto(e.fotoRuta)!} alt={e.nombre} loading="lazy" className="-mx-5 -mt-5 mb-3 aspect-[16/10] w-[calc(100%+2.5rem)] max-w-none object-cover" />
+                  <img src={urlFoto(e.fotoRuta)!} alt={e.nombre} loading="lazy" className="-mx-5 -mt-5 mb-3 aspect-[2/1] w-[calc(100%+2.5rem)] max-w-none object-cover" />
                 )}
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2">
