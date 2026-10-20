@@ -70,9 +70,9 @@ export function ShellApp({ grupos, tenantNombre, usuarioNombre, usuarioFoto, pue
             {abierto ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
-        <nav id="menu-principal" aria-label="Módulos" className={`${abierto ? "flex" : "hidden"} flex-col px-2 pb-2 md:flex md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:px-3`}>
+        <nav id="menu-principal" aria-label="Módulos" className={`${abierto ? "flex" : "hidden"} flex-col px-2 pb-2 md:flex md:flex-1 md:overflow-y-auto md:overflow-x-hidden md:px-3 md:pb-4`}>
           {grupos.map((grupo, gi) => (
-            <div key={gi} className={`flex flex-col gap-1 ${gi > 0 ? "mt-2 border-t border-white/10 pt-2" : ""}`}>
+            <div key={gi} style={{ flexGrow: grupo.length }} className={`flex flex-col gap-1 md:justify-evenly ${gi > 0 ? "mt-2 border-t border-white/10 pt-2 md:mt-3 md:pt-3" : ""}`}>
               {grupo.map((sec) => {
                 const Icono = ICONOS[sec.id] ?? ClipboardList;
                 const activo = sec.rutas.some((r) => pathname === r || pathname.startsWith(`${r}/`));
