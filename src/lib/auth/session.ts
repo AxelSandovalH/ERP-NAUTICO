@@ -11,6 +11,8 @@ import { puede, type Permiso } from "@/modules/permisos";
 export type Sesion = {
   usuarioId: string;
   nombre: string;
+  /** Ruta de la foto de perfil en Storage (null si no tiene) */
+  fotoRuta: string | null;
   email: string;
   rol: RolUsuario;
   tenantId: string;
@@ -35,6 +37,7 @@ export const getSesion = cache(async (): Promise<Sesion | null> => {
   return {
     usuarioId: u.id,
     nombre: u.nombre,
+    fotoRuta: u.fotoRuta,
     email: u.email,
     rol: u.rol,
     tenantId: u.tenantId,

@@ -111,6 +111,8 @@ model Usuario {
   supabaseId String     @unique
   rol        RolUsuario @default(VENDEDOR)
   activo     Boolean    @default(true)
+  // Foto de perfil: ruta en el bucket público "fotos-flota" (<tenantId>/<usuarioId>/<id>.jpg)
+  fotoRuta   String?
   creadoEn   DateTime   @default(now())
 
   reservasCreadas Reserva[]     @relation("ReservaCreador")

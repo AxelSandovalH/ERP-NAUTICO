@@ -29,6 +29,7 @@ type Props = {
   grupos: SeccionNav[][];
   tenantNombre: string;
   usuarioNombre: string;
+  usuarioFoto: string | null;
   puedeConfigurar: boolean;
   salir: () => Promise<void>;
   children: ReactNode;
@@ -39,7 +40,7 @@ const SOBRE_NAVY = { "--logo-bote": "#ffffff" } as CSSProperties;
 
 /** Marco de la app. En pantallas grandes la barra de módulos es un riel de íconos (80 px) que se despliega al pasar el cursor
  *  (o al navegar con el teclado) por encima del contenido, sin moverlo. En el celular es una barra con un botón de menú. */
-export function ShellApp({ grupos, tenantNombre, usuarioNombre, puedeConfigurar, salir, children }: Props) {
+export function ShellApp({ grupos, tenantNombre, usuarioNombre, usuarioFoto, puedeConfigurar, salir, children }: Props) {
   const pathname = usePathname();
   const compacto = pathname.startsWith("/calendario");
   // La lista de la flota aprovecha todo el ancho: las tarjetas con foto crecen para llenarlo
@@ -88,7 +89,7 @@ export function ShellApp({ grupos, tenantNombre, usuarioNombre, puedeConfigurar,
         </nav>
       </aside>
       <div className="flex justify-end px-4 pt-3 md:px-8">
-        <MenuCuenta nombre={usuarioNombre} empresa={tenantNombre} configuracion={puedeConfigurar} salir={salir} />
+        <MenuCuenta nombre={usuarioNombre} foto={usuarioFoto} empresa={tenantNombre} configuracion={puedeConfigurar} salir={salir} />
       </div>
       <main className={compacto ? "w-full min-w-0 px-2 py-2 md:px-3 md:py-3" : `mx-auto w-full min-w-0 px-4 py-6 md:px-8 ${ancho ? "max-w-none" : "max-w-6xl"}`}>{seccion && seccion.tabs.length > 1 && <PestanasSeccion tabs={seccion.tabs} pathname={pathname} />}{children}</main>
     </div>
