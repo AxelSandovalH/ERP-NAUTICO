@@ -118,6 +118,7 @@ export async function cancelarIngreso(tx: Tx, id: string, usuarioId: string, mot
   if (i.estado === "CANCELADO") throw new ErrorFinanzas("El ingreso ya está cancelado.");
   if (i.origen === "PAGO_RESERVA") throw new ErrorFinanzas("Este ingreso lo generó el pago de una reserva: elimina el pago en la reserva.");
   if (i.origen === "TRANSPORTE") throw new ErrorFinanzas("Este ingreso lo generó el cobro de un traslado: anula el cobro en Transporte.");
+  if (i.origen === "ACTIVIDAD") throw new ErrorFinanzas("Este ingreso lo generó el pago de una actividad: elimina el pago en la reserva de la actividad.");
   if (motivo.trim().length < 3) throw new ErrorFinanzas("Indica el motivo de la cancelación.");
   await exigirNoConciliado(tx, { ingresoId: id });
   return tx.ingreso.update({ where: { id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: motivo.trim() } });
@@ -234,6 +235,35 @@ export async function ingresoDesdePago(tx: Tx, tenantId: string, pagoId: string,
       fecha: aDate(diaLocal(pago.pagadoEn, zona)), reservaId: pago.reservaId, pagoId: pago.id, origen: "PAGO_RESERVA",
     },
   });
+}
+
+/** Cada pago de una reserva de actividad genera su ingreso (una sola vez). Devuelve null si no hay cuenta a donde llevarlo. */
+export async function ingresoDePagoActividad(tx: Tx, tenantId: string, pagoId: string, cuentaId?: string | null) {
+  const previo = await tx.ingreso.findUnique({ where: { pagoActividadId: pagoId } });
+  if (previo) return previo;
+  const pago = await tx.pagoActividad.findUnique({ where: { id: pagoId }, include: { reserva: { include: { cliente: true } } } });
+  if (!pago) throw new ErrorFinanzas("El pago no existe.");
+  const { base, zona, cfg } = await contexto(tx, tenantId);
+  const destino = cuentaId ?? cuentaPorMetodo(cfg, pago.metodo);
+  if (!destino) return null;
+  const cuenta = await cuentaActiva(tx, destino);
+  const cat = await categoriaPorClave(tx, tenantId, "RESERVAS");
+  const m = armarMovimiento(cuenta.moneda, base, cfg.tipoCambio, { montoBaseCentavos: pago.montoCentavos });
+  return tx.ingreso.create({
+    data: {
+      tenantId, concepto: `Actividad #${pago.reserva.folio} · ${pago.reserva.cliente.nombre}`, categoriaId: cat.id, cuentaId: cuenta.id, ...m,
+      fecha: aDate(diaLocal(pago.pagadoEn, zona)), pagoActividadId: pago.id, origen: "ACTIVIDAD",
+    },
+  });
+}
+
+/** Al eliminar el pago de una actividad, su ingreso queda cancelado (no se borra el rastro). */
+export async function cancelarIngresoDePagoActividad(tx: Tx, pagoId: string, usuarioId?: string) {
+  const i = await tx.ingreso.findUnique({ where: { pagoActividadId: pagoId } });
+  if (i && i.estado === "ACTIVO") {
+    await exigirNoConciliado(tx, { ingresoId: i.id });
+    await tx.ingreso.update({ where: { id: i.id }, data: { estado: "CANCELADO", canceladoPorId: usuarioId, canceladoEn: new Date(), motivoCancelacion: "Pago de la actividad eliminado" } });
+  }
 }
 
 /** Al eliminar un pago de reserva, su ingreso queda cancelado (no se borra el rastro). */

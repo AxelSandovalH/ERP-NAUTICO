@@ -159,7 +159,7 @@ describe("planes y precios", () => {
   it("las características de cada plan son las del pricing, en orden", () => {
     const e = (p: Parameters<typeof caracteristicasDe>[0]) => caracteristicasDe(p).map((c) => c.etiqueta);
     expect(e("CONTROL")).toEqual(["Calendario operativo", "Horarios", "Ingresos", "Gastos", "Flota"]);
-    expect(e("GESTION")).toEqual([...e("CONTROL"), "Inventario", "Equipo", "Transporte", "Facturación"]);
+    expect(e("GESTION")).toEqual([...e("CONTROL"), "Inventario", "Equipo", "Transporte", "Actividades y experiencias", "Facturación"]);
     expect(e("ENTERPRISE")).toEqual([...e("GESTION"), "Conciliación bancaria", "Asistencia + nómina", "Comisiones", "Gráficas, dashboard y reportes"]);
   });
   it("la prueba incluye todas las características de pago", () => {
@@ -207,7 +207,7 @@ describe("navegación por rol", () => {
   it("la barra sigue el orden pedido, en tres grupos", () => {
     const grupos = seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), "ADMIN").map((g) => g.map((s) => s.etiqueta));
     expect(grupos).toEqual([
-      ["Flota", "Transporte", "Calendario"],
+      ["Flota", "Transporte", "Calendario", "Actividades"],
       ["Ingresos", "Gastos", "Facturación", "Conciliación", "Nómina"],
       ["Comisiones", "Tarifas", "Reportes", "Dashboard"],
     ]);
@@ -227,6 +227,19 @@ describe("navegación por rol", () => {
     const solo = seccionesDe(["nucleo", "reportes", "transporte"], "ADMIN").flat().find((s) => s.id === "reportes");
     expect(solo?.etiqueta).toBe("Reportes");
     expect(solo?.href).toBe("/reportes/flota-terrestre");
+  });
+  it("Actividades: lo ven Gestión y Enterprise, depende de Reservas y vive junto al calendario", () => {
+    expect(MODULOS_POR_PLAN.CONTROL).not.toContain("actividades");
+    expect(MODULOS_POR_PLAN.GESTION).toContain("actividades");
+    expect(MODULOS_POR_PLAN.PRUEBA).toContain("actividades");
+    expect(modulosActivos(["actividades"])).not.toContain("actividades"); // sin Reservas no se activa
+    expect(modulosActivos(["flota", "reservas", "actividades"])).toContain("actividades");
+    const sec = seccionesDe(modulosEfectivos("GESTION", MODULOS_POR_PLAN.GESTION), "ADMIN").flat().find((x) => x.id === "actividades");
+    expect(sec?.tabs.map((t) => t.href)).toEqual(["/actividades", "/actividades/salidas"]);
+    expect(puede("VENDEDOR", "actividades:reservar")).toBe(true);
+    expect(puede("VENDEDOR", "actividades:escribir")).toBe(false);
+    expect(puede("OPERACIONES", "actividades:escribir")).toBe(true);
+    expect(puede("OPERACIONES", "actividades:cobrar")).toBe(false);
   });
   it("si no ve la entrada principal, la sección toma el nombre de la primera que sí ve", () => {
     const nomina = seccionesDe(modulosEfectivos("ENTERPRISE", MODULOS_POR_PLAN.ENTERPRISE), "VENDEDOR").flat().find((s) => s.id === "nomina");

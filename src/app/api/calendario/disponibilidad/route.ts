@@ -31,16 +31,20 @@ export async function GET(request: NextRequest) {
     });
     const reservas = await tx.reserva.findMany({ where: { fecha: aDate(fecha), estado: { not: "CANCELADA" } }, include: { cliente: true } });
     const bloqueos = await tx.bloqueoEmbarcacion.findMany({ where: { desde: { lte: aDate(fecha) }, hasta: { gte: aDate(fecha) } } });
+    const salidas = await tx.salidaActividad.findMany({ where: { fecha: aDate(fecha), estado: { not: "CANCELADA" }, embarcacionId: { not: null } }, include: { actividad: { select: { nombre: true } } } });
     return flota.map<BarcoDisponibilidad>((e) => {
       const bl = bloqueos.filter((b) => b.embarcacionId === e.id);
       const ocupado: Ocupado[] = reservas
         .filter((r) => r.embarcacionId === e.id)
         .map((r) => ({ ini: r.inicioMin, fin: r.finMin, tipo: "RESERVA", label: `${hhmm(r.inicioMin)}–${hhmm(r.finMin)} ${r.cliente.nombre}` }));
+      const deActividades: Ocupado[] = salidas
+        .filter((x) => x.embarcacionId === e.id)
+        .map((x) => ({ ini: x.inicioMin, fin: x.finMin, tipo: "RESERVA", label: `${hhmm(x.inicioMin)}–${hhmm(x.finMin)} ${x.actividad.nombre}` }));
       return {
         id: e.id, nombre: e.nombre, capacidad: e.capacidad, color: e.color,
         duracionBaseMin: e.tarifas.length ? Math.min(...e.tarifas.map((t) => t.duracionMin)) : null,
         bloqueadoTodoElDia: bl.length > 0,
-        ocupado: [...ocupado, ...bl.map<Ocupado>((b) => ({ ini: 0, fin: 24 * 60, tipo: "BLOQUEO", label: `${aIso(b.desde)}→${aIso(b.hasta)} ${b.motivo}` }))],
+        ocupado: [...ocupado, ...deActividades, ...bl.map<Ocupado>((b) => ({ ini: 0, fin: 24 * 60, tipo: "BLOQUEO", label: `${aIso(b.desde)}→${aIso(b.hasta)} ${b.motivo}` }))],
       };
     });
   });

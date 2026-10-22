@@ -1,6 +1,7 @@
 import type { Tx } from "@/lib/db/tenant";
 import { aDate, aIso, sumarDias } from "@/lib/fechas";
 import { fondoClaro } from "./contraste";
+import { lugaresOcupados } from "@/lib/actividades/reglas";
 import { abreviarOrigen, cobroDe, hhmm, inicioFin, iniciales } from "./mapear";
 import type { EventoCal } from "./tipos";
 
@@ -22,6 +23,12 @@ export async function fetchEventos(tx: Tx, start: string, end: string): Promise<
     where: { desde: { lt: aDate(end) }, hasta: { gte: aDate(start) } },
     include: { embarcacion: true },
     orderBy: { desde: "asc" },
+  });
+
+  const salidas = await tx.salidaActividad.findMany({
+    where: { fecha: { gte: aDate(start), lt: aDate(end) }, estado: { not: "CANCELADA" } },
+    include: { actividad: true, embarcacion: true, guia: true, reservas: { select: { pax: true, estado: true } } },
+    orderBy: [{ fecha: "asc" }, { inicioMin: "asc" }],
   });
 
   const deReservas: EventoCal[] = reservas.map((r) => {
@@ -88,5 +95,34 @@ export async function fetchEventos(tx: Tx, start: string, end: string): Promise<
     };
   });
 
-  return [...deReservas, ...deBloqueos];
+  const deSalidas: EventoCal[] = salidas.map((x) => {
+    const fecha = aIso(x.fecha);
+    const color = x.actividad.color;
+    const ocupados = lugaresOcupados(x.reservas);
+    return {
+      id: `salida-${x.id}`,
+      title: `${x.actividad.nombre} · ${ocupados}/${x.cupo}`,
+      start: inicioFin(fecha, x.inicioMin),
+      end: inicioFin(fecha, x.finMin),
+      backgroundColor: color,
+      borderColor: color,
+      extendedProps: {
+        tipo: "salida",
+        salidaId: x.id,
+        actividad: x.actividad.nombre,
+        actividadId: x.actividadId,
+        estado: x.estado === "COMPLETADA" ? "COMPLETADA" : "PROGRAMADA",
+        embarcacion: x.embarcacion?.nombre ?? null,
+        embarcacionId: x.embarcacionId,
+        guia: x.guia ? `${x.guia.nombre} ${x.guia.apellido}`.trim() : null,
+        horaInicio: hhmm(x.inicioMin),
+        horaFin: hhmm(x.finMin),
+        ocupados,
+        cupo: x.cupo,
+        textoOscuro: fondoClaro(color),
+      },
+    };
+  });
+
+  return [...deReservas, ...deSalidas, ...deBloqueos];
 }

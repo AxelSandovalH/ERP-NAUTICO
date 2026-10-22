@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { BarChart3, Banknote, Menu, X, FileText, Bus, Landmark, Receipt, TrendingUp, ClipboardList, LayoutDashboard, Percent, Ship, Tag, CalendarDays, type LucideIcon } from "lucide-react";
+import { BarChart3, Banknote, Menu, X, FileText, Bus, Landmark, Receipt, TrendingUp, ClipboardList, LayoutDashboard, Percent, Ship, Tag, CalendarDays, Compass, type LucideIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";
 import { LogoMarca } from "./logo";
 import { MenuCuenta } from "./menu-cuenta";
@@ -14,6 +14,7 @@ const ICONOS: Record<string, LucideIcon> = {
   flota: Ship,
   transporte: Bus,
   calendario: CalendarDays,
+  actividades: Compass,
   ingresos: TrendingUp,
   gastos: Receipt,
   facturacion: FileText,
@@ -44,7 +45,7 @@ export function ShellApp({ grupos, tenantNombre, usuarioNombre, usuarioFoto, pue
   const pathname = usePathname();
   const compacto = pathname.startsWith("/calendario");
   // La lista de la flota aprovecha todo el ancho: las tarjetas con foto crecen para llenarlo
-  const ancho = pathname === "/flota";
+  const ancho = pathname === "/flota" || pathname === "/actividades";
   const seccion = grupos.flat().find((s) => s.rutas.some((r) => pathname === r || pathname.startsWith(`${r}/`)));
   // En el celular el menú está plegado. Se guarda en qué pantalla se abrió: al navegar a otra se cierra solo.
   const [abiertoEn, setAbiertoEn] = useState<string | null>(null);

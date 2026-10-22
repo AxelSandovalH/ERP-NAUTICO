@@ -11,8 +11,8 @@ import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import esLocale from "@fullcalendar/core/locales/es";
 import type { DatesSetArg, EventClickArg, EventContentArg } from "@fullcalendar/core";
-import { CalendarClock, Plus, Search, Ship, Users, Wrench, X } from "lucide-react";
-import type { BarcoFlota, EventoCal, PropBloqueo, PropReserva } from "@/lib/calendario/tipos";
+import { CalendarClock, Compass, Plus, Search, Ship, Users, Wrench, X } from "lucide-react";
+import type { BarcoFlota, EventoCal, PropBloqueo, PropReserva, PropSalida } from "@/lib/calendario/tipos";
 import { DisponibilidadDia } from "./disponibilidad-dia";
 import { EventoTooltip, type TooltipEstado } from "./evento-tooltip";
 
@@ -124,10 +124,10 @@ export function CalendarioOperativo({ eventosIniciales, ventana, flota, puedeCre
     return eventos.filter((e) => {
       const p = e.extendedProps;
       if (p.tipo === "bloqueo" && !verBloqueos) return false;
-      if (filtros.size > 0 && !filtros.has(p.embarcacionId)) return false;
+      if (filtros.size > 0 && !(p.embarcacionId && filtros.has(p.embarcacionId))) return false;
       if (!q) return true;
-      const extra = p.tipo === "reserva" ? `${p.vendedor ?? ""} ${p.telefono ?? ""} ${p.folio}` : p.motivo;
-      return sinAcentos(`${e.title} ${p.embarcacion} ${extra}`).includes(q);
+      const extra = p.tipo === "reserva" ? `${p.vendedor ?? ""} ${p.telefono ?? ""} ${p.folio}` : p.tipo === "salida" ? `${p.actividad} ${p.guia ?? ""}` : p.motivo;
+      return sinAcentos(`${e.title} ${p.embarcacion ?? ""} ${extra}`).includes(q);
     });
   }, [eventos, filtros, verBloqueos, busqueda]);
 
@@ -164,13 +164,14 @@ export function CalendarioOperativo({ eventosIniciales, ventana, flota, puedeCre
 
   const alClickEvento = useCallback((info: EventClickArg) => {
     setTooltip(null);
-    const p = info.event.extendedProps as PropReserva | PropBloqueo;
+    const p = info.event.extendedProps as PropReserva | PropBloqueo | PropSalida;
     // En celular y vista mes, tocar un evento lleva al día (como Papillon)
     if (window.innerWidth < 768 && info.view.type === "dayGridMonth" && info.event.start) {
       calRef.current?.getApi().changeView("timeGridDay", info.event.start);
       return;
     }
     if (p.tipo === "bloqueo") { setBloqueoSel(p); return; }
+    if (p.tipo === "salida") { router.push(`/actividades/salidas/${p.salidaId}`); return; }
     const api = calRef.current?.getApi();
     const dia = api ? isoLocal(api.view.currentStart) : "";
     router.push(`/reservas/${p.reservaId}?from=calendario&vista=${api?.view.type ?? "dayGridMonth"}&fecha=${dia}`);
@@ -192,7 +193,7 @@ export function CalendarioOperativo({ eventosIniciales, ventana, flota, puedeCre
     // En táctil el tap ya abre el detalle; el tooltip taparía a los vecinos
     if (window.matchMedia?.("(hover: none)").matches) return;
     setTooltip({
-      props: info.event.extendedProps as PropReserva | PropBloqueo,
+      props: info.event.extendedProps as PropReserva | PropBloqueo | PropSalida,
       x: info.jsEvent.clientX, y: info.jsEvent.clientY,
       rect: info.el.getBoundingClientRect(),
     });
@@ -355,11 +356,52 @@ export function CalendarioOperativo({ eventosIniciales, ventana, flota, puedeCre
 
 /* ─── render de eventos por vista ─────────────────────────────── */
 function renderEvento(info: EventContentArg, movil: boolean) {
-  const p = info.event.extendedProps as PropReserva | PropBloqueo;
+  const p = info.event.extendedProps as PropReserva | PropBloqueo | PropSalida;
   const bg = info.event.backgroundColor;
   const vista = info.view.type;
   const mes = vista === "dayGridMonth";
   const lista = vista.startsWith("list");
+
+  if (p.tipo === "salida") {
+    const txt = p.textoOscuro ? "text-slate-900" : "text-white";
+    const llena = p.ocupados >= p.cupo;
+    if (lista) {
+      return (
+        <div className="flex w-full items-center gap-3 py-1">
+          <div className="w-1 shrink-0 self-stretch rounded-full" style={{ backgroundColor: bg }} />
+          <Compass className="h-3.5 w-3.5 shrink-0" style={{ color: bg }} />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold">{p.actividad}</p>
+            <p className="text-xs text-muted">{horaLarga(p.horaInicio)} – {horaLarga(p.horaFin)} · {p.ocupados} de {p.cupo} lugares{p.embarcacion ? ` · ${p.embarcacion}` : ""}</p>
+          </div>
+        </div>
+      );
+    }
+    if (mes) {
+      return (
+        <div className={`flex w-full items-center gap-1 overflow-hidden rounded-md px-1.5 py-[2px] ${txt}`} style={{ backgroundColor: bg }}>
+          <Compass className="h-2.5 w-2.5 shrink-0 opacity-85" />
+          <span className="shrink-0 text-[10px] font-semibold tabular-nums leading-tight">{horaCorta(p.horaInicio)}</span>
+          <span className="truncate text-[10px] font-bold leading-tight">{p.actividad}</span>
+          <span className="ml-auto shrink-0 text-[10px] font-semibold tabular-nums leading-tight">{p.ocupados}/{p.cupo}</span>
+        </div>
+      );
+    }
+    return (
+      <div className={`flex h-full w-full flex-col gap-1 overflow-hidden ${movil ? "px-2 py-1" : "px-3 py-2"} ${txt}`}>
+        <div className="flex items-center gap-1.5">
+          <Compass className="h-3 w-3 shrink-0" />
+          <span className="shrink-0 text-[11px] font-bold">{horaLarga(p.horaInicio)} – {horaLarga(p.horaFin)}</span>
+          {llena && <span className="rounded-full bg-black/15 px-1.5 py-0.5 text-[9px]">Llena</span>}
+        </div>
+        <p className="truncate text-[13px] font-bold leading-snug">{p.actividad}</p>
+        <div className="flex flex-wrap items-center gap-2 text-[11px]">
+          <span className="flex shrink-0 items-center gap-1"><Users className="h-3 w-3" />{p.ocupados} de {p.cupo}</span>
+          {p.embarcacion && <span className="flex min-w-0 items-center gap-1"><Ship className="h-3 w-3 shrink-0" /><span className="truncate">{p.embarcacion}</span></span>}
+        </div>
+      </div>
+    );
+  }
 
   if (p.tipo === "bloqueo") {
     const txt = p.textoOscuro ? "text-slate-900" : "text-white";

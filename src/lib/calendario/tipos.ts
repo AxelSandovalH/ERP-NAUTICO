@@ -38,6 +38,23 @@ export type PropBloqueo = {
   textoOscuro: boolean;
 };
 
+/** Salida de una actividad (experiencia por persona). Si usa una embarcación, la ocupa. */
+export type PropSalida = {
+  tipo: "salida";
+  salidaId: string;
+  actividad: string;
+  actividadId: string;
+  estado: "PROGRAMADA" | "COMPLETADA";
+  embarcacion: string | null;
+  embarcacionId: string | null;
+  guia: string | null;
+  horaInicio: string; // HH:MM
+  horaFin: string;
+  ocupados: number;
+  cupo: number;
+  textoOscuro: boolean;
+};
+
 export type EventoCal = {
   id: string;
   title: string;
@@ -46,7 +63,7 @@ export type EventoCal = {
   allDay?: boolean;
   backgroundColor: string;
   borderColor: string;
-  extendedProps: PropReserva | PropBloqueo;
+  extendedProps: PropReserva | PropBloqueo | PropSalida;
 };
 
 export type BarcoFlota = { id: string; nombre: string; color: string };

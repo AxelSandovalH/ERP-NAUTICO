@@ -25,4 +25,4 @@ export const ESQUEMAS_PAGO = { FIJO_PERIODO: "Sueldo fijo por periodo", POR_DIA:
 export const PERIODICIDADES = { SEMANAL: "Semanal", QUINCENAL: "Quincenal", MENSUAL: "Mensual" } as const;
 export const ESTADOS_PAGO_NOMINA = { PENDIENTE: "Pendiente", PAGADO: "Pagado", CANCELADO: "Cancelado" } as const;
 export const TIPOS_CUENTA = { EFECTIVO: "Efectivo / caja", BANCO: "Banco", TARJETA_CREDITO: "Tarjeta de crédito", PASARELA: "Pasarela de pago", OTRA: "Otra" } as const;
-export const ORIGENES_MOVIMIENTO = { MANUAL: "Manual", PAGO_RESERVA: "Pago de reserva", NOMINA: "Nómina", COMISION: "Comisiones", INVENTARIO: "Inventario", TRANSPORTE: "Transporte" } as const;
+export const ORIGENES_MOVIMIENTO = { MANUAL: "Manual", PAGO_RESERVA: "Pago de reserva", NOMINA: "Nómina", COMISION: "Comisiones", INVENTARIO: "Inventario", TRANSPORTE: "Transporte", ACTIVIDAD: "Actividad" } as const;

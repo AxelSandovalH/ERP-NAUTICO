@@ -1,10 +1,10 @@
 "use client";
 
-import { Phone, Users, Wrench } from "lucide-react";
-import type { PropBloqueo, PropReserva } from "@/lib/calendario/tipos";
+import { Compass, Phone, Users, Wrench } from "lucide-react";
+import type { PropBloqueo, PropReserva, PropSalida } from "@/lib/calendario/tipos";
 import { dinero } from "@/lib/fechas";
 
-export type TooltipEstado = { props: PropReserva | PropBloqueo; x: number; y: number; rect: DOMRect };
+export type TooltipEstado = { props: PropReserva | PropBloqueo | PropSalida; x: number; y: number; rect: DOMRect };
 
 const ESTADO = { PENDIENTE: "Pendiente", CONFIRMADA: "Confirmada", COMPLETADA: "Completada", CANCELADA: "Cancelada" } as const;
 const COBRO = { LIQUIDADA: "Liquidada", PARCIAL: "Anticipo recibido", SIN_PAGO: "Sin pago" } as const;
@@ -22,10 +22,20 @@ function posicion(x: number, rect: DOMRect, alto: number) {
 
 export function EventoTooltip({ t, moneda }: { t: TooltipEstado; moneda: string }) {
   const p = t.props;
-  const { top, left } = posicion(t.x, t.rect, p.tipo === "reserva" ? 210 : 110);
+  const { top, left } = posicion(t.x, t.rect, p.tipo === "reserva" ? 210 : p.tipo === "salida" ? 150 : 110);
   return (
     <div className="pointer-events-none fixed z-50 rounded-xl border border-line bg-surface p-3 text-sm shadow-xl" style={{ top, left, width: ANCHO }}>
-      {p.tipo === "bloqueo" ? (
+      {p.tipo === "salida" ? (
+        <>
+          <p className="flex items-center gap-1.5 font-semibold"><Compass className="h-3.5 w-3.5" /> {p.actividad}</p>
+          <p className="mt-0.5 text-xs text-muted">{p.horaInicio}–{p.horaFin}{p.embarcacion ? ` · ${p.embarcacion}` : ""}</p>
+          <div className="mt-2 flex items-center gap-x-3 text-xs">
+            <span className="flex items-center gap-1"><Users className="h-3 w-3" />{p.ocupados} de {p.cupo} lugares</span>
+            <span>{p.estado === "COMPLETADA" ? "Completada" : "Programada"}</span>
+          </div>
+          {p.guia && <p className="mt-1 text-[11px] text-muted">Guía: {p.guia}</p>}
+        </>
+      ) : p.tipo === "bloqueo" ? (
         <>
           <p className="flex items-center gap-1.5 font-semibold"><Wrench className="h-3.5 w-3.5" /> Bloqueo · {p.embarcacion}</p>
           <p className="mt-1 text-muted">{p.motivo}</p>

@@ -76,6 +76,10 @@ model Tenant {
   categorias           Categoria[]
   gastos               Gasto[]
   ingresos             Ingreso[]
+  actividades          Actividad[]
+  salidasActividad     SalidaActividad[]
+  reservasActividad    ReservaActividad[]
+  pagosActividad       PagoActividad[]
   traspasos            Traspaso[]
   ajusteCuentas        AjusteCuenta[]
   arqueoCuentas        ArqueoCuenta[]
@@ -115,10 +119,11 @@ model Usuario {
   fotoRuta   String?
   creadoEn   DateTime   @default(now())
 
-  reservasCreadas Reserva[]     @relation("ReservaCreador")
-  beneficiario    Beneficiario?
-  tripulante      Tripulante?
-  empleado        Empleado?
+  reservasCreadas          Reserva[]          @relation("ReservaCreador")
+  beneficiario             Beneficiario?
+  tripulante               Tripulante?
+  empleado                 Empleado?
+  reservasActividadCreadas ReservaActividad[] @relation("ReservaActividadCreador")
 
   @@index([tenantId])
 }
@@ -166,6 +171,7 @@ model Embarcacion {
   tarifasComision  TarifaComision[]
   tripulantesFijos TripulanteEmbarcacion[]
   gastos           Gasto[]
+  salidasActividad SalidaActividad[]
 
   ubicacionInventario Ubicacion?
 
@@ -237,7 +243,8 @@ model Cliente {
   notas    String?
   creadoEn DateTime @default(now())
 
-  reservas Reserva[]
+  reservas          Reserva[]
+  reservasActividad ReservaActividad[]
 
   rfc                String?
   razonSocialFiscal  String?
@@ -345,9 +352,10 @@ model Tripulante {
   notas     String?
   creadoEn  DateTime      @default(now())
 
-  embarcaciones TripulanteEmbarcacion[]
-  asignaciones  ReservaTripulante[]
-  empleado      Empleado?
+  embarcaciones    TripulanteEmbarcacion[]
+  asignaciones     ReservaTripulante[]
+  empleado         Empleado?
+  salidasActividad SalidaActividad[]
 
   @@index([tenantId])
 }
@@ -738,6 +746,7 @@ enum OrigenMovimiento {
   COMISION
   INVENTARIO
   TRANSPORTE
+  ACTIVIDAD
 }
 
 // Donde está el dinero: caja de efectivo, cuenta de banco, tarjeta, pasarela de pago.
@@ -880,6 +889,10 @@ model Ingreso {
   lineaBanco        MovimientoBanco?
 
   traslado Traslado?
+
+  // Cada pago de una reserva de actividad genera su ingreso (uno solo)
+  pagoActividadId String?        @unique
+  pagoActividad   PagoActividad? @relation(fields: [pagoActividadId], references: [id], onDelete: SetNull)
 
   @@index([tenantId, fecha])
   @@index([cuentaId])
@@ -1350,4 +1363,113 @@ model GastoCfdi {
 
   @@unique([tenantId, uuid])
   @@index([tenantId])
+}
+
+// ─── MÓDULO ACTIVIDADES ──────────────────────────────────────────────────────
+// Experiencias que se venden por persona (snorkel, avistamiento de ballenas, pesca compartida…).
+// A diferencia de una reserva de embarcación (renta exclusiva), cada salida tiene un cupo
+// y varias reservas la comparten. Una salida puede usar una embarcación (que queda ocupada) y un guía.
+
+enum EstadoSalidaActividad {
+  PROGRAMADA
+  COMPLETADA
+  CANCELADA
+}
+
+model Actividad {
+  id             String   @id @default(cuid())
+  tenantId       String
+  tenant         Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  nombre         String
+  descripcion    String?
+  duracionMin    Int
+  /// Precio por persona
+  precioCentavos Int
+  /// Lugares por salida (se copia a cada salida y ahí se puede ajustar)
+  cupo           Int
+  color          String   @default("#0ea5e9")
+  puntoEncuentro String?
+  activa         Boolean  @default(true)
+  /// Foto: ruta en el bucket público "fotos-flota" (<tenantId>/<actividadId>/<id>.jpg)
+  fotoRuta       String?
+  notas          String?
+  creadoEn       DateTime @default(now())
+
+  salidas SalidaActividad[]
+
+  @@unique([tenantId, nombre])
+  @@index([tenantId])
+}
+
+model SalidaActividad {
+  id             String                @id @default(cuid())
+  tenantId       String
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actividadId    String
+  actividad      Actividad             @relation(fields: [actividadId], references: [id], onDelete: Cascade)
+  fecha          DateTime              @db.Date
+  inicioMin      Int
+  finMin         Int
+  cupo           Int
+  /// Precio por persona de esta salida (se copia de la actividad al programarla)
+  precioCentavos Int
+  embarcacionId  String?
+  embarcacion    Embarcacion?          @relation(fields: [embarcacionId], references: [id], onDelete: SetNull)
+  guiaId         String?
+  guia           Tripulante?           @relation(fields: [guiaId], references: [id], onDelete: SetNull)
+  estado         EstadoSalidaActividad @default(PROGRAMADA)
+  notas          String?
+  creadoEn       DateTime              @default(now())
+
+  reservas ReservaActividad[]
+
+  @@index([tenantId, fecha])
+  @@index([embarcacionId, fecha])
+  @@index([guiaId, fecha])
+  @@index([actividadId])
+}
+
+model ReservaActividad {
+  id                     String          @id @default(cuid())
+  tenantId               String
+  tenant                 Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  /// Comparte el contador de folios con las reservas de embarcación
+  folio                  Int
+  salidaId               String
+  salida                 SalidaActividad @relation(fields: [salidaId], references: [id], onDelete: Cascade)
+  clienteId              String
+  cliente                Cliente         @relation(fields: [clienteId], references: [id])
+  pax                    Int
+  precioUnitarioCentavos Int
+  totalCentavos          Int
+  estado                 EstadoReserva   @default(CONFIRMADA)
+  origen                 OrigenReserva   @default(DIRECTO)
+  notas                  String?
+  creadorId              String?
+  creador                Usuario?        @relation("ReservaActividadCreador", fields: [creadorId], references: [id], onDelete: SetNull)
+  creadoEn               DateTime        @default(now())
+  actualizadoEn          DateTime        @updatedAt
+
+  pagos PagoActividad[]
+
+  @@unique([tenantId, folio])
+  @@index([tenantId, salidaId])
+  @@index([clienteId])
+}
+
+model PagoActividad {
+  id                 String           @id @default(cuid())
+  tenantId           String
+  tenant             Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservaActividadId String
+  reserva            ReservaActividad @relation(fields: [reservaActividadId], references: [id], onDelete: Cascade)
+  montoCentavos      Int
+  metodo             MetodoPago
+  referencia         String?
+  pagadoEn           DateTime         @default(now())
+
+  ingreso Ingreso?
+
+  @@index([tenantId])
+  @@index([reservaActividadId])
 }

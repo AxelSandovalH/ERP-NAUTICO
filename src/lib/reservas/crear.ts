@@ -53,6 +53,14 @@ export async function validarDisponibilidad(tx: Tx, e: EntradaReserva) {
     const c = delDia.find((r) => e.inicioMin < r.finMin && r.inicioMin < e.finMin)!;
     throw new ErrorReserva(`${emb.nombre} ya tiene una reserva de ${minutosAHora(c.inicioMin)} a ${minutosAHora(c.finMin)} ese día.`);
   }
+
+  // Una actividad programada en este barco también lo ocupa
+  const actividades = await tx.salidaActividad.findMany({
+    where: { embarcacionId: e.embarcacionId, fecha: aDate(e.fecha), estado: { not: "CANCELADA" } },
+    select: { inicioMin: true, finMin: true, actividad: { select: { nombre: true } } },
+  });
+  const ac = actividades.find((a) => e.inicioMin < a.finMin && a.inicioMin < e.finMin);
+  if (ac) throw new ErrorReserva(`${emb.nombre} tiene la actividad «${ac.actividad.nombre}» de ${minutosAHora(ac.inicioMin)} a ${minutosAHora(ac.finMin)} ese día.`);
 }
 
 export async function crearReservaTx(tx: Tx, e: EntradaReserva) {

@@ -10,7 +10,7 @@ import { puede, type Permiso } from "./permisos";
 export type ModuloId =
   | "nucleo" | "flota" | "reservas" | "calendario" | "tripulacion" | "comisiones" | "nomina" | "asistencia" | "cuentas" | "gastos" | "ingresos"
   // Ya forman parte de los planes, pero aún no están construidos (proximamente: true)
-  | "horarios" | "inventario" | "transporte" | "facturacion" | "conciliacion" | "reportes";
+  | "horarios" | "inventario" | "transporte" | "facturacion" | "conciliacion" | "reportes" | "actividades";
 
 export type ModuloDef = {
   id: ModuloId;
@@ -151,6 +151,13 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
     requiere: [],
     nav: [{ href: "/reportes", etiqueta: "Reportes", permiso: "reportes:ver" }],
   },
+  actividades: {
+    id: "actividades",
+    nombre: "Actividades",
+    descripcion: "Experiencias que se venden por persona: catálogo con fotos y precios, salidas con cupo, reservas, cobros y, si usan una embarcación, la bloquean en el calendario.",
+    requiere: ["reservas"],
+    nav: [{ href: "/actividades", etiqueta: "Actividades", permiso: "actividades:ver" }],
+  },
   calendario: {
     id: "calendario",
     nombre: "Calendario",
@@ -160,7 +167,7 @@ export const MODULOS: Record<ModuloId, ModuloDef> = {
   },
 };
 
-export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "horarios", "inventario", "transporte", "facturacion", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota"];
+export const ORDEN_NAV: ModuloId[] = ["nucleo", "calendario", "horarios", "inventario", "transporte", "facturacion", "reservas", "ingresos", "gastos", "cuentas", "conciliacion", "reportes", "tripulacion", "comisiones", "asistencia", "nomina", "flota", "actividades"];
 
 /** Lo que incluye cada plan, en el orden y con los nombres con que se vende. Cada plan incluye todo lo
  *  anterior. Una característica puede cubrir varios módulos (p. ej. el calendario necesita las reservas). */
@@ -185,6 +192,7 @@ export const PLANES: Record<Plan, PlanDef> = {
       { etiqueta: "Inventario", modulos: ["inventario"] },
       { etiqueta: "Equipo", modulos: ["tripulacion"] },
       { etiqueta: "Transporte", modulos: ["transporte"] },
+      { etiqueta: "Actividades y experiencias", modulos: ["actividades"] },
       { etiqueta: "Facturación", modulos: ["facturacion"] },
     ],
   },
@@ -277,6 +285,10 @@ export const GRUPOS_NAV: SeccionDef[][] = [
       { href: "/calendario", etiqueta: "Calendario", modulo: "calendario" },
       { href: "/reservas", etiqueta: "Reservas", modulo: "reservas" },
       { href: "/clientes", etiqueta: "Clientes", modulo: "reservas" },
+    ] },
+    { id: "actividades", etiqueta: "Actividades", entradas: [
+      { href: "/actividades", etiqueta: "Catálogo", modulo: "actividades", permiso: "actividades:ver" },
+      { href: "/actividades/salidas", etiqueta: "Salidas", modulo: "actividades", permiso: "actividades:ver" },
     ] },
   ],
   [

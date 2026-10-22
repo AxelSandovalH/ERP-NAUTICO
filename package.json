@@ -18,7 +18,8 @@
     "db:storage": "tsx scripts/crear-bucket.ts",
     "stripe:configurar": "tsx scripts/configurar-stripe.ts",
     "procura:conectar": "tsx scripts/conectar-procura.ts",
-    "db:seed:finanzas": "tsx prisma/seed-finanzas.ts"
+    "db:seed:finanzas": "tsx prisma/seed-finanzas.ts",
+    "db:seed:actividades": "tsx prisma/seed-actividades.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.135.0",
