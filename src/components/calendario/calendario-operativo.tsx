@@ -135,8 +135,10 @@ export function CalendarioOperativo({ eventosIniciales, ventana, flota, puedeCre
   const resumenDia = useMemo(() => {
     if (vista !== "timeGridDay" || !rango) return null;
     const dia = isoLocal(rango.start);
-    const delDia = eventosVisibles.filter((e) => e.extendedProps.tipo === "reserva" && e.start.slice(0, 10) === dia);
-    return { salidas: delDia.length, pax: delDia.reduce((a, e) => a + (e.extendedProps as PropReserva).personas, 0) };
+    const delDia = eventosVisibles.filter((e) => (e.extendedProps.tipo === "reserva" || e.extendedProps.tipo === "salida") && e.start.slice(0, 10) === dia);
+    // Una renta cuenta sus pasajeros; una salida de actividad, los lugares ya apartados
+    const pax = (e: EventoCal) => (e.extendedProps.tipo === "reserva" ? e.extendedProps.personas : e.extendedProps.tipo === "salida" ? e.extendedProps.ocupados : 0);
+    return { salidas: delDia.length, pax: delDia.reduce((a, e) => a + pax(e), 0) };
   }, [vista, rango, eventosVisibles]);
 
   // Vista de día: acota la rejilla a las horas con actividad para que el día entre sin scroll
